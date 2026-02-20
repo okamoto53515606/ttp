@@ -1,0 +1,56 @@
+; TTP - Tera Term Pilot 接続マクロ
+; 環境変数経由で接続情報を受け取り、SSH接続＋自動ログを行う。
+
+getenv 'HOMEPATH' myhomepath
+
+getenv 'TT_TTL_HOST' myhost
+getenv 'TT_TTL_PORT' myport
+getenv 'TT_TTL_AUTH' myauth
+getenv 'TT_TTL_USER' myuser
+getenv 'TT_TTL_PASSWD' mypasswd
+getenv 'TT_TTL_PRIVATEKEY' myprivatekey
+getenv 'TT_TTL_LOGPATH' mylogpath
+
+getenv 'TT_TTL_PROMPT' myprompt
+getenv 'TT_TTL_SENDLN_PARAM' mysendlnparam
+
+; 接続パラメータ構築
+myconnectparam = ''
+strconcat myconnectparam myhost
+strconcat myconnectparam ':'
+strconcat myconnectparam myport
+strconcat myconnectparam ' /ssh /2'
+strconcat myconnectparam ' /auth='
+strconcat myconnectparam myauth
+strconcat myconnectparam ' /user='
+strconcat myconnectparam myuser
+strconcat myconnectparam ' /passwd='
+strconcat myconnectparam mypasswd
+
+strcompare myauth 'publickey'
+if result = 0 then
+  strconcat myconnectparam ' /keyfile='
+  strconcat myconnectparam myprivatekey
+endif
+
+strconcat myconnectparam ' /timeout=5'
+
+; 接続
+connect myconnectparam
+
+if result <> 2 then
+  end
+endif
+
+; 自動ログ記録
+strlen mylogpath
+if result > 0 then
+  logopen mylogpath 0 0
+endif
+
+; プロンプト待ち＋コマンド送信
+strlen myprompt
+if result > 0 then
+  wait myprompt
+  sendln mysendlnparam
+endif

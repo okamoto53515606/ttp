@@ -1,0 +1,23 @@
+[project]
+name = "ttp"
+version = "1.0.0"
+description = "TTP - Tera Term Pilot: テラタームマクロをGUIで管理・実行するツール"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "okamo" }]
+dependencies = [
+    "cryptography>=44.0",
+]
+
+[project.scripts]
+ttp = "ttp.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.10.4,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.0",
+]
