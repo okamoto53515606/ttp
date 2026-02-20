@@ -17,7 +17,7 @@ ttp_data/
 logs/
 
 # Submodule / misc
-ttp/
+/ttp/
 
 # okamo用
 .okamo/
