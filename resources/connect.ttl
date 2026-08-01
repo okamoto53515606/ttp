@@ -14,6 +14,15 @@ getenv 'TT_TTL_LOGPATH' mylogpath
 getenv 'TT_TTL_PROMPT' myprompt
 getenv 'TT_TTL_SENDLN_PARAM' mysendlnparam
 
+; 踏み台（多段接続）
+getenv 'TT_TTL_HOP_ENABLED' myhop_enabled
+getenv 'TT_TTL_HOP_PROMPT1' myhop_prompt1
+getenv 'TT_TTL_HOP_CMD1' myhop_cmd1
+getenv 'TT_TTL_HOP_PROMPT2' myhop_prompt2
+getenv 'TT_TTL_HOP_PASSWORD' myhop_password
+getenv 'TT_TTL_HOP_PROMPT3' myhop_prompt3
+getenv 'TT_TTL_HOP_CMD3' myhop_cmd3
+
 ; 接続パラメータ構築
 myconnectparam = ''
 strconcat myconnectparam myhost
@@ -33,7 +42,13 @@ if result = 0 then
   strconcat myconnectparam myprivatekey
 endif
 
-strconcat myconnectparam ' /timeout=5'
+; 踏み台時はタイムアウトを延長
+strcompare myhop_enabled '1'
+if result = 0 then
+  strconcat myconnectparam ' /timeout=15'
+else
+  strconcat myconnectparam ' /timeout=5'
+endif
 
 ; 接続
 connect myconnectparam
@@ -53,4 +68,29 @@ strlen myprompt
 if result > 0 then
   wait myprompt
   sendln mysendlnparam
+endif
+
+; ── 踏み台（多段接続）処理 ──
+strcompare myhop_enabled '1'
+if result = 0 then
+  ; プロンプト1 → コマンド1 (例: ssh user@target)
+  strlen myhop_prompt1
+  if result > 0 then
+    wait myhop_prompt1
+    sendln myhop_cmd1
+  endif
+
+  ; プロンプト2 → パスワード送信
+  strlen myhop_prompt2
+  if result > 0 then
+    wait myhop_prompt2
+    sendln myhop_password
+  endif
+
+  ; プロンプト3 → コマンド3
+  strlen myhop_prompt3
+  if result > 0 then
+    wait myhop_prompt3
+    sendln myhop_cmd3
+  endif
 endif

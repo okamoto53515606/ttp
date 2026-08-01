@@ -108,6 +108,14 @@ def launch_connection(
     env["TT_TTL_PROMPT"] = connection.prompt
     env["TT_TTL_SENDLN_PARAM"] = connection.sendln_param
     env["TT_TTL_LOGPATH"] = log_path
+    # 踏み台（多段接続）設定
+    env["TT_TTL_HOP_ENABLED"] = "1" if connection.hop_enabled else "0"
+    env["TT_TTL_HOP_PROMPT1"] = connection.hop_prompt1
+    env["TT_TTL_HOP_CMD1"] = connection.hop_cmd1
+    env["TT_TTL_HOP_PROMPT2"] = connection.hop_prompt2
+    env["TT_TTL_HOP_PASSWORD"] = connection.hop_password
+    env["TT_TTL_HOP_PROMPT3"] = connection.hop_prompt3
+    env["TT_TTL_HOP_CMD3"] = connection.hop_cmd3
 
     try:
         proc = subprocess.Popen(

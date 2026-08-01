@@ -250,9 +250,28 @@ class ConnectionDialog:
         self._dlg.resizable(False, False)
         _setup_dialog(self._dlg, parent)
 
-        _center_window(self._dlg, 500, 480)
+        _center_window(self._dlg, 500, 680)
 
-        frame = ttk.Frame(self._dlg, padding=20)
+        # スクロール可能なキャンバス
+        canvas = tk.Canvas(self._dlg, borderwidth=0, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self._dlg, orient=tk.VERTICAL, command=canvas.yview)
+        scroll_frame = ttk.Frame(canvas)
+        scroll_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        canvas.create_window((0, 0), window=scroll_frame, anchor=tk.NW)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # マウスホイール対応
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        self._dlg.protocol("WM_DELETE_WINDOW", lambda: (canvas.unbind_all("<MouseWheel>"), self._on_cancel()))
+
+        frame = ttk.Frame(scroll_frame, padding=20)
         frame.pack(fill=tk.BOTH, expand=True)
 
         row = 0
@@ -344,6 +363,70 @@ class ConnectionDialog:
         self._sendln.grid(row=row, column=1, columnspan=2, sticky=tk.W, pady=4)
         row += 1
 
+        # ── 踏み台（多段接続）設定 ──
+        ttk.Separator(frame, orient=tk.HORIZONTAL).grid(
+            row=row, column=0, columnspan=3, sticky=tk.EW, pady=10
+        )
+        row += 1
+
+        self._hop_enabled_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            frame, text="踏み台経由で接続する", variable=self._hop_enabled_var,
+            command=self._on_hop_toggle,
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        row += 1
+
+        self._hop_widgets: list[tk.Widget] = []
+
+        # プロンプト1
+        ttk.Label(frame, text="プロンプト1:").grid(row=row, column=0, sticky=tk.E, padx=(0, 8), pady=4)
+        self._hop_prompt1 = ttk.Entry(frame, width=35)
+        self._hop_prompt1.grid(row=row, column=1, columnspan=2, sticky=tk.W, pady=4)
+        self._hop_widgets.append(self._hop_prompt1)
+        row += 1
+
+        # コマンド1
+        ttk.Label(frame, text="コマンド1:").grid(row=row, column=0, sticky=tk.E, padx=(0, 8), pady=4)
+        self._hop_cmd1 = ttk.Entry(frame, width=35)
+        self._hop_cmd1.grid(row=row, column=1, columnspan=2, sticky=tk.W, pady=4)
+        self._hop_widgets.append(self._hop_cmd1)
+        row += 1
+
+        # プロンプト2 (パスワード要求)
+        ttk.Label(frame, text="プロンプト2 (PW要求):").grid(row=row, column=0, sticky=tk.E, padx=(0, 8), pady=4)
+        self._hop_prompt2 = ttk.Entry(frame, width=35)
+        self._hop_prompt2.grid(row=row, column=1, columnspan=2, sticky=tk.W, pady=4)
+        self._hop_widgets.append(self._hop_prompt2)
+        row += 1
+
+        # ターゲットパスワード
+        ttk.Label(frame, text="ターゲットPW:").grid(row=row, column=0, sticky=tk.E, padx=(0, 8), pady=4)
+        hop_pw_frame = ttk.Frame(frame)
+        hop_pw_frame.grid(row=row, column=1, columnspan=2, sticky=tk.W, pady=4)
+        self._hop_password = ttk.Entry(hop_pw_frame, show="*", width=25)
+        self._hop_password.pack(side=tk.LEFT)
+        self._hop_show_pw_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            hop_pw_frame, text="表示", variable=self._hop_show_pw_var,
+            command=self._toggle_hop_password,
+        ).pack(side=tk.LEFT, padx=5)
+        self._hop_widgets.extend([self._hop_password, hop_pw_frame.winfo_children()[1]])
+        row += 1
+
+        # プロンプト3
+        ttk.Label(frame, text="プロンプト3:").grid(row=row, column=0, sticky=tk.E, padx=(0, 8), pady=4)
+        self._hop_prompt3 = ttk.Entry(frame, width=35)
+        self._hop_prompt3.grid(row=row, column=1, columnspan=2, sticky=tk.W, pady=4)
+        self._hop_widgets.append(self._hop_prompt3)
+        row += 1
+
+        # コマンド3
+        ttk.Label(frame, text="コマンド3:").grid(row=row, column=0, sticky=tk.E, padx=(0, 8), pady=4)
+        self._hop_cmd3 = ttk.Entry(frame, width=35)
+        self._hop_cmd3.grid(row=row, column=1, columnspan=2, sticky=tk.W, pady=4)
+        self._hop_widgets.append(self._hop_cmd3)
+        row += 1
+
         # ボタン
         btn_frame = ttk.Frame(frame)
         btn_frame.grid(row=row, column=0, columnspan=3, pady=(15, 0))
@@ -362,10 +445,20 @@ class ConnectionDialog:
             self._sendln.insert(0, connection.sendln_param)
             if connection.key_path:
                 self._key_label.config(text=Path(connection.key_path).name)
+            # 踏み台設定
+            if connection.hop_enabled:
+                self._hop_enabled_var.set(True)
+                self._hop_prompt1.insert(0, connection.hop_prompt1)
+                self._hop_cmd1.insert(0, connection.hop_cmd1)
+                self._hop_prompt2.insert(0, connection.hop_prompt2)
+                self._hop_password.insert(0, connection.hop_password)
+                self._hop_prompt3.insert(0, connection.hop_prompt3)
+                self._hop_cmd3.insert(0, connection.hop_cmd3)
         else:
             self._port.insert(0, "22")
 
         self._on_auth_change()
+        self._on_hop_toggle()
         self._name.focus_set()
         self._dlg.bind("<Return>", lambda e: self._on_save())
         self._dlg.protocol("WM_DELETE_WINDOW", self._on_cancel)
@@ -379,6 +472,17 @@ class ConnectionDialog:
 
     def _toggle_password(self) -> None:
         self._passwd.config(show="" if self._show_pw_var.get() else "*")
+
+    def _toggle_hop_password(self) -> None:
+        self._hop_password.config(show="" if self._hop_show_pw_var.get() else "*")
+
+    def _on_hop_toggle(self) -> None:
+        state = "normal" if self._hop_enabled_var.get() else "disabled"
+        for w in self._hop_widgets:
+            try:
+                w.configure(state=state)
+            except Exception:
+                pass
 
     def _browse_key(self) -> None:
         path = filedialog.askopenfilename(
@@ -437,6 +541,13 @@ class ConnectionDialog:
             key_path=self._key_path,
             prompt=self._prompt.get().strip(),
             sendln_param=self._sendln.get().strip(),
+            hop_enabled=self._hop_enabled_var.get(),
+            hop_prompt1=self._hop_prompt1.get().strip(),
+            hop_cmd1=self._hop_cmd1.get().strip(),
+            hop_prompt2=self._hop_prompt2.get().strip(),
+            hop_password=self._hop_password.get(),
+            hop_prompt3=self._hop_prompt3.get().strip(),
+            hop_cmd3=self._hop_cmd3.get().strip(),
             id=conn_id,
             created_at=self._conn.created_at if self._conn else now,
             updated_at=now,

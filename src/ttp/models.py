@@ -21,6 +21,14 @@ class Connection:
     key_path: str = ""  # 鍵ファイルのフルパス
     prompt: str = ""  # ログイン後に待つプロンプト
     sendln_param: str = ""  # プロンプト後に送るコマンド
+    # 踏み台（多段接続）設定
+    hop_enabled: bool = False
+    hop_prompt1: str = ""   # 踏み台ログイン後のプロンプト
+    hop_cmd1: str = ""      # 踏み台で実行するコマンド (例: ssh user@target)
+    hop_prompt2: str = ""   # ターゲットのパスワードプロンプト (例: "password:")
+    hop_password: str = ""  # ターゲットのパスワード
+    hop_prompt3: str = ""   # ターゲットログイン後のプロンプト
+    hop_cmd3: str = ""      # ターゲットで実行するコマンド
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
