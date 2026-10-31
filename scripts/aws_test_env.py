@@ -543,6 +543,43 @@ def cmd_run_task(session) -> int:
     return 0
 
 
+def cmd_stop_task(session) -> int:
+    """起動中の Fargate タスクだけを停止する。
+
+    単発の run-task なので停止すれば再起動しない。
+    サービスが残っている場合は、停止しても再起動されるので注意を促す。
+    """
+    ecs = session.client("ecs")
+
+    try:
+        services = ecs.list_services(cluster=CLUSTER).get("serviceArns", [])
+    except Exception as e:  # noqa: BLE001
+        print(f"クラスタ {CLUSTER} が見つかりません（{type(e).__name__}）")
+        return 0
+
+    if services:
+        print("! サービスが残っています。停止しても再起動されます:")
+        for arn in services:
+            print("   ", arn.rsplit("/", 1)[-1])
+        print("  cleanup でサービスごと削除してください。")
+        return 1
+
+    arns = ecs.list_tasks(cluster=CLUSTER, desiredStatus="RUNNING").get(
+        "taskArns", []
+    )
+    if not arns:
+        print("実行中のタスクはありません。")
+        return 0
+
+    for arn in arns:
+        ecs.stop_task(cluster=CLUSTER, task=arn, reason="ttp test finished")
+        print("停止:", arn.rsplit("/", 1)[-1])
+
+    ecs.get_waiter("tasks_stopped").wait(cluster=CLUSTER, tasks=arns)
+    print("停止を確認しました（サービスが無いため再起動しません）。")
+    return 0
+
+
 def cmd_status(session) -> int:
     state = load_state()
     print(json.dumps(state, indent=2) if state else "(状態ファイルなし)")
@@ -665,7 +702,8 @@ def cmd_cleanup(session) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "action", choices=["create", "status", "cleanup", "run-task"]
+        "action",
+        choices=["create", "status", "cleanup", "run-task", "stop-task"],
     )
     args = parser.parse_args()
 
@@ -678,6 +716,8 @@ def main() -> int:
         return cmd_status(session)
     if args.action == "run-task":
         return cmd_run_task(session)
+    if args.action == "stop-task":
+        return cmd_stop_task(session)
     return cmd_cleanup(session)
 
 
