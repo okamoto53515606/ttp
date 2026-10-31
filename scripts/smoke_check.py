@@ -13,6 +13,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+# Windows の CI（cp1252 コンソール）でも日本語を出力できるようにする
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
