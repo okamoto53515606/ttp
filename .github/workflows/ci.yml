@@ -18,5 +18,7 @@ jobs:
           enable-cache: true
       - name: 依存をインストール
         run: uv sync
+      - name: Python バージョンの確認
+        run: uv run python -VV
       - name: スモークチェック
         run: uv run python scripts/smoke_check.py
