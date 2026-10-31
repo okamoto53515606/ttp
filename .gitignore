@@ -28,3 +28,6 @@ logs/
 
 # 公開用の記事（リポジトリには含めない）
 docs/articles/
+
+# 監査用の一時ファイル
+requirements-audit.txt

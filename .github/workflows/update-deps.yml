@@ -47,6 +47,12 @@ jobs:
         if: steps.diff.outputs.changed == 'true'
         run: uv run python scripts/smoke_check.py
 
+      - name: 依存の脆弱性チェック
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          uv export --no-dev --no-emit-project --no-hashes -o requirements-audit.txt
+          uvx pip-audit -r requirements-audit.txt
+
       - name: パッチバージョンを上げる
         id: bump
         if: steps.diff.outputs.changed == 'true'

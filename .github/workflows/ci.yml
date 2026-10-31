@@ -22,3 +22,8 @@ jobs:
         run: uv run python -VV
       - name: スモークチェック
         run: uv run python scripts/smoke_check.py
+
+      - name: 依存の脆弱性チェック
+        run: |
+          uv export --no-dev --no-emit-project --no-hashes -o requirements-audit.txt
+          uvx pip-audit -r requirements-audit.txt
