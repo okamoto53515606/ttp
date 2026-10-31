@@ -13,6 +13,18 @@
 - **ttpmacro.exe 自動検出**: インストール済みのTera Termを自動検出
 - **ポータブル**: zip解凍するだけ。アンインストールはフォルダ削除するだけ
 
+## 基本機能と追加機能
+
+TTP の本体は、**Tera Term マクロ（ttpmacro.exe）を起動・管理するツール** です。
+
+| 区分 | 内容 | 必要なもの |
+|---|---|---|
+| **基本機能**（本体） | Tera Term マクロの起動、接続情報の暗号化保存、自動ログ記録 | Tera Term |
+| **追加機能**（v1.2.0・任意） | SSM / ECS Exec で EC2・Fargate に接続 | Session Manager プラグイン |
+
+AWS 接続は **Tera Term を使わない独立した追加機能** です（SSH の代わりに SSM / ECS Exec を使うため、Tera Term も sshd も不要）。
+**使う人だけ** Session Manager プラグインを入れてください。使わない場合、追加のインストールも設定も不要で、従来の動作は変わりません。
+
 ## ドキュメント
 
 - **[使い方マニュアル](docs/manual.md)** — インストール・セットアップ・各画面の操作方法
@@ -64,6 +76,9 @@
 | Ctrl+Shift+A | AWS から接続 |
 
 ## AWS から接続 (SSM / ECS Exec)
+
+> **Tera Term を使わない追加機能です。** 本体（Tera Term マクロの起動）とは独立しており、
+> 使わない場合は何も設定不要です。
 
 SSH を立てずに、Session Manager / ECS Exec 経由でシェルに入ります。
 SSH の鍵もインバウンドポートも不要です。

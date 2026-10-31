@@ -4,6 +4,11 @@
 
 **TTP (Tera Term Pilot)** は、Tera Term マクロ (ttpmacro.exe) を GUI で管理・実行するための Windows デスクトップアプリケーションです。
 
+> **TTP の中心は Tera Term マクロの起動です。**
+> v1.2.0 で追加した AWS 接続（SSM / ECS Exec）は、Tera Term を使わない
+> **任意の追加機能** です。使う人だけ Session Manager プラグインをインストールしてください。
+> 使わない場合、従来の機能と設定は一切変わりません。
+
 ### こんな悩みを解決します
 
 | よくある困りごと | TTP なら |
@@ -258,6 +263,9 @@ Are you sure you want to continue connecting (yes/no)?
 
 SSH の代わりに、AWS Systems Manager（Session Manager）と ECS Exec で
 シェルに入る機能です。**sshd のインストールも、インバウンドポートの開放も不要**です。
+
+> これは **Tera Term を使わない追加機能** です。TTP の本体（Tera Term マクロの起動）とは
+> 独立しており、使わない場合は何も設定する必要はありません。
 
 ![AWS メニュー](screenshot/aws_menu.png)
 
