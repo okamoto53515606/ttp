@@ -25,3 +25,6 @@ logs/
 
 # テスト環境の状態ファイル
 .ttp-test-state.json
+
+# 公開用の記事（リポジトリには含めない）
+docs/articles/
