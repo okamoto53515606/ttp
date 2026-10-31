@@ -12,14 +12,16 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from ttp import __version__
-from ttp.models import Connection, AppSettings
+from ttp.models import Connection, AppSettings, AwsSettings
 from ttp.storage import (
     MasterStore,
     ConnectionStore,
     SettingsStore,
+    AwsStore,
     get_log_dir,
 )
 from ttp.teraterm import launch_connection
+from ttp.aws_browser import AwsBrowserWindow
 from ttp.dialogs import (
     SetMasterPasswordDialog,
     EnterMasterPasswordDialog,
@@ -27,6 +29,7 @@ from ttp.dialogs import (
     ConnectionDialog,
     SettingsDialog,
     ChangeMasterPasswordDialog,
+    AwsSettingsDialog,
 )
 
 
@@ -43,10 +46,12 @@ class TTPApp:
         self._master_store = MasterStore()
         self._conn_store = ConnectionStore()
         self._settings_store = SettingsStore()
+        self._aws_store = AwsStore()
 
         self._key: bytes = b""  # マスターパスワードから導出した鍵
         self._connections: list[Connection] = []
         self._settings: AppSettings = AppSettings()
+        self._aws: AwsSettings = AwsSettings()
 
     def run(self) -> None:
         """アプリを起動する。"""
@@ -58,6 +63,7 @@ class TTPApp:
         # 設定とデータを読み込み
         self._settings = self._settings_store.load()
         self._connections = self._conn_store.load(self._key)
+        self._aws = self._aws_store.load(self._key)
 
         # ttpmacro パスが未設定なら選択ダイアログ
         if not self._settings.ttpmacro_path or not os.path.isfile(
@@ -144,6 +150,15 @@ class TTPApp:
         file_menu.add_separator()
         file_menu.add_command(label="終了", command=root.quit, accelerator="Alt+F4")
         menubar.add_cascade(label="ファイル", menu=file_menu)
+
+        aws_menu = tk.Menu(menubar, tearoff=0)
+        aws_menu.add_command(
+            label="AWS から接続...",
+            command=self._on_aws_browser,
+            accelerator="Ctrl+Shift+A",
+        )
+        aws_menu.add_command(label="AWS 設定...", command=self._on_aws_settings)
+        menubar.add_cascade(label="AWS", menu=aws_menu)
 
         help_menu = tk.Menu(menubar, tearoff=0)
         help_menu.add_command(
@@ -240,6 +255,8 @@ class TTPApp:
         root.bind("<Control-l>", lambda e: self._on_open_logs())
         root.bind("<Control-L>", lambda e: self._on_open_logs())
         root.bind("<Control-comma>", lambda e: self._on_settings())
+        root.bind("<Control-Shift-a>", lambda e: self._on_aws_browser())
+        root.bind("<Control-Shift-A>", lambda e: self._on_aws_browser())
         root.bind("<Return>", lambda e: self._on_connect())
 
         self._sort_reverse = False
@@ -261,7 +278,10 @@ class TTPApp:
     def _update_status(self) -> None:
         n = len(self._connections)
         ttpmacro = self._settings.ttpmacro_path or "(未設定)"
-        self._status_var.set(f"接続先: {n}件  |  ttpmacro: {ttpmacro}")
+        aws = self._aws.region if self._aws.is_configured else "未設定"
+        self._status_var.set(
+            f"接続先: {n}件  |  ttpmacro: {ttpmacro}  |  AWS: {aws}"
+        )
 
     def _get_selected_index(self) -> int | None:
         sel = self._tree.selection()
@@ -369,6 +389,23 @@ class TTPApp:
             self._settings_store.save(self._settings)
             self._update_status()
 
+    def _on_aws_settings(self) -> None:
+        dlg = AwsSettingsDialog(self._root, self._aws)
+        if dlg.result:
+            self._aws = dlg.result
+            self._aws_store.save(self._aws, self._key)
+            self._update_status()
+
+    def _on_aws_browser(self) -> None:
+        if not self._aws.is_configured:
+            messagebox.showinfo(
+                "AWS 設定", "先にアクセスキー・シークレット・リージョンを設定してください。"
+            )
+            self._on_aws_settings()
+            if not self._aws.is_configured:
+                return
+        AwsBrowserWindow(self._root, self._aws)
+
     def _on_change_password(self) -> None:
         dlg = ChangeMasterPasswordDialog(self._root)
         if dlg.old_password is None or dlg.new_password is None:
@@ -381,6 +418,7 @@ class TTPApp:
 
         new_key = self._master_store.setup(dlg.new_password)
         self._conn_store.re_encrypt(old_key, new_key)
+        self._aws_store.re_encrypt(old_key, new_key)
         self._key = new_key
         messagebox.showinfo("完了", "マスターパスワードを変更しました。")
 

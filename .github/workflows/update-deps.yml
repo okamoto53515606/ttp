@@ -1,0 +1,70 @@
+name: Monthly dependency update
+
+on:
+  # 毎月 1 日 03:00 JST (18:00 UTC)
+  schedule:
+    - cron: "0 18 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: 依存を最新化
+        run: uv lock --upgrade
+
+      - name: 差分の有無を確認
+        id: diff
+        shell: bash
+        run: |
+          if git diff --quiet -- uv.lock pyproject.toml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "更新はありませんでした"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git --no-pager diff --stat -- uv.lock pyproject.toml
+          fi
+
+      - name: 依存を同期
+        if: steps.diff.outputs.changed == 'true'
+        run: uv sync
+
+      - name: スモークチェック
+        if: steps.diff.outputs.changed == 'true'
+        run: uv run python scripts/smoke_check.py
+
+      - name: パッチバージョンを上げる
+        id: bump
+        if: steps.diff.outputs.changed == 'true'
+        shell: bash
+        run: |
+          VERSION=$(uv run python scripts/bump_version.py patch)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "次のバージョン: $VERSION"
+
+      - name: コミットしてタグを push
+        if: steps.diff.outputs.changed == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add uv.lock pyproject.toml src/ttp/__init__.py
+          git commit -m "chore: update dependencies (v${VERSION})"
+          git tag "v${VERSION}"
+          git push origin HEAD --tags
+
+          # タグ push により Release ワークフローが exe をビルドして配布する

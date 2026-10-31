@@ -67,3 +67,36 @@ class AppSettings:
         valid_fields = {f.name for f in cls.__dataclass_fields__.values()}
         filtered = {k: v for k, v in data.items() if k in valid_fields}
         return cls(**filtered)
+
+
+@dataclass
+class AwsSettings:
+    """AWS 接続設定 (マスターパスワードで暗号化して保存)
+
+    長期アクセスキーを保存するため、保存先は ttp_data/aws.enc のみとし、
+    ログ・例外メッセージ・子プロセスのコマンドラインには出力しない。
+    """
+
+    access_key_id: str = ""
+    secret_access_key: str = ""
+    region: str = "ap-northeast-1"
+    # MFA を必須にしている IAM ユーザーだけが有効化する
+    mfa_enabled: bool = False
+    mfa_serial: str = ""  # 空なら iam:ListMFADevices で自動検出
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(
+            self.access_key_id.strip()
+            and self.secret_access_key.strip()
+            and self.region.strip()
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AwsSettings:
+        valid_fields = {f.name for f in cls.__dataclass_fields__.values()}
+        filtered = {k: v for k, v in data.items() if k in valid_fields}
+        return cls(**filtered)

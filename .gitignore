@@ -21,3 +21,7 @@ logs/
 
 # okamo用
 .okamo/
+.env
+
+# テスト環境の状態ファイル
+.ttp-test-state.json

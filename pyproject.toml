@@ -1,12 +1,13 @@
 [project]
 name = "ttp"
-version = "1.1.0"
+version = "1.2.0"
 description = "TTP - Tera Term Pilot: テラタームマクロをGUIで管理・実行するツール"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 authors = [{ name = "okamo" }]
 dependencies = [
+    "boto3>=1.35",
     "cryptography>=44.0",
 ]
 

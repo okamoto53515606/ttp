@@ -7,11 +7,12 @@ from __future__ import annotations
 
 import os
 import tkinter as tk
+import webbrowser
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from typing import Any
 
-from ttp.models import Connection, AppSettings
+from ttp.models import Connection, AppSettings, AwsSettings
 from ttp.teraterm import search_ttpmacro
 
 
@@ -234,7 +235,96 @@ class SelectTTpmacroDialog:
         self._dlg.destroy()
 
 
-# ── 接続先 追加/編集ダイアログ ──────────────────────────────
+# ── 必要なツールの案内ダイアログ ──────────────────────────
+
+
+class MissingToolsDialog:
+    """必要な外部ツールが見つからないときの案内。
+
+    AWS CLI と Session Manager プラグインは TTP に同梱していないため、
+    未導入のまま「AWS から接続」を開いたときにインストールを促す。
+    """
+
+    def __init__(
+        self, parent: tk.Tk | tk.Toplevel, tools: list[dict[str, str]]
+    ) -> None:
+        self._dlg = tk.Toplevel(parent)
+        self._dlg.title("必要なツールがありません")
+        self._dlg.resizable(False, False)
+        _setup_dialog(self._dlg, parent)
+
+        height = 210 + 120 * max(1, len(tools))
+        _center_window(self._dlg, 640, height)
+
+        frame = ttk.Frame(self._dlg, padding=18)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        if len(tools) > 1:
+            header = (
+                "「AWS から接続」を使うには、次のいずれかが必要です"
+                "（上のプラグインを推奨）。"
+            )
+        else:
+            header = "「AWS から接続」を使うには、次のツールが必要です。"
+        ttk.Label(
+            frame, text=header, font=("", 10, "bold")
+        ).pack(anchor=tk.W)
+        ttk.Label(
+            frame,
+            text=(
+                "TTP には同梱されていません。インストール後に TTP を再起動してください。"
+            ),
+            font=("", 8),
+            foreground="#555",
+            wraplength=580,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(4, 10))
+
+        for tool in tools:
+            box = ttk.LabelFrame(
+                frame, text=tool.get("name", ""), padding=10
+            )
+            box.pack(fill=tk.X, pady=4)
+
+            ttk.Label(
+                box,
+                text=tool.get("purpose", ""),
+                wraplength=560,
+                justify=tk.LEFT,
+            ).pack(anchor=tk.W)
+
+            ttk.Label(
+                box,
+                text=f"確認コマンド: {tool.get('check', '')}",
+                font=("Consolas", 8),
+                foreground="#555",
+            ).pack(anchor=tk.W, pady=(4, 0))
+
+            url = tool.get("url", "")
+            if url:
+                row = ttk.Frame(box)
+                row.pack(fill=tk.X, pady=(6, 0))
+                entry = ttk.Entry(row, width=58, font=("Consolas", 8))
+                entry.insert(0, url)
+                entry.configure(state="readonly")
+                entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                ttk.Button(
+                    row,
+                    text="ページを開く",
+                    width=12,
+                    command=lambda u=url: webbrowser.open(u),
+                ).pack(side=tk.LEFT, padx=(6, 0))
+
+        btn = ttk.Frame(frame)
+        btn.pack(pady=(14, 0))
+        ttk.Button(btn, text="閉じる", command=self._dlg.destroy, width=12).pack()
+
+        self._dlg.protocol("WM_DELETE_WINDOW", self._dlg.destroy)
+        self._dlg.bind("<Escape>", lambda e: self._dlg.destroy())
+        self._dlg.wait_window()
+
+
+# ── 接続先編集ダイアログ ────────────────────────────────────
 
 
 class ConnectionDialog:
@@ -695,4 +785,269 @@ class ChangeMasterPasswordDialog:
     def _on_cancel(self) -> None:
         self.old_password = None
         self.new_password = None
+        self._dlg.destroy()
+
+
+# ── MFA コード入力ダイアログ ────────────────────────────────
+
+
+class MfaCodeDialog:
+    """MFA（多要素認証）の 6 桁コードを入力するダイアログ。
+
+    MFA を必須にしている IAM ユーザーだけが通る。
+    使っていないユーザーには表示されない。
+    """
+
+    def __init__(self, parent: tk.Tk | tk.Toplevel, serial: str = "") -> None:
+        self.result: str | None = None
+        self._dlg = tk.Toplevel(parent)
+        self._dlg.title("MFA コードの入力")
+        self._dlg.resizable(False, False)
+        _setup_dialog(self._dlg, parent)
+
+        _center_window(self._dlg, 440, 210)
+
+        frame = ttk.Frame(self._dlg, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(
+            frame,
+            text="認証アプリに表示されている 6 桁のコードを入力してください。",
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W)
+
+        if serial:
+            ttk.Label(
+                frame, text=f"デバイス: {serial}", font=("", 8), foreground="#555"
+            ).pack(anchor=tk.W, pady=(4, 0))
+
+        self._code = ttk.Entry(
+            frame, width=12, font=("Consolas", 14), justify=tk.CENTER
+        )
+        self._code.pack(pady=14)
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.pack()
+        ttk.Button(btn_frame, text="OK", command=self._on_ok, width=12).pack(
+            side=tk.LEFT, padx=4
+        )
+        ttk.Button(btn_frame, text="キャンセル", command=self._on_cancel, width=12).pack(
+            side=tk.LEFT, padx=4
+        )
+
+        self._code.focus_set()
+        self._dlg.bind("<Return>", lambda e: self._on_ok())
+        self._dlg.protocol("WM_DELETE_WINDOW", self._on_cancel)
+        self._dlg.wait_window()
+
+    def _on_ok(self) -> None:
+        code = self._code.get().strip().replace(" ", "")
+        if not code.isdigit() or len(code) != 6:
+            messagebox.showwarning(
+                "入力エラー", "6 桁の数字を入力してください。", parent=self._dlg
+            )
+            return
+        self.result = code
+        self._dlg.destroy()
+
+    def _on_cancel(self) -> None:
+        self.result = None
+        self._dlg.destroy()
+
+
+# ── AWS 設定ダイアログ ──────────────────────────────────────
+
+
+class AwsSettingsDialog:
+    """AWS の認証情報（アクセスキー / シークレット / リージョン）設定。"""
+
+    _REGIONS = [
+        "ap-northeast-1",
+        "ap-northeast-3",
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-northeast-2",
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+        "eu-west-1",
+        "eu-central-1",
+    ]
+
+    def __init__(self, parent: tk.Tk, settings: AwsSettings | None = None) -> None:
+        self.result: AwsSettings | None = None
+        self._dlg = tk.Toplevel(parent)
+        self._dlg.title("AWS 設定 (SSM / ECS Exec)")
+        self._dlg.resizable(False, False)
+        _setup_dialog(self._dlg, parent)
+
+        _center_window(self._dlg, 520, 400)
+
+        frame = ttk.Frame(self._dlg, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(
+            frame,
+            text="アクセスキー・シークレットはマスターパスワードで暗号化して保存されます。",
+            font=("", 8),
+            foreground="#555",
+            justify=tk.LEFT,
+        ).grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 14))
+
+        ttk.Label(frame, text="アクセスキー ID:").grid(
+            row=1, column=0, sticky=tk.E, padx=(0, 8), pady=4
+        )
+        self._access_key = ttk.Entry(frame, width=44)
+        self._access_key.grid(row=1, column=1, sticky=tk.W, pady=4)
+
+        ttk.Label(frame, text="シークレット:").grid(
+            row=2, column=0, sticky=tk.E, padx=(0, 8), pady=4
+        )
+        secret_row = ttk.Frame(frame)
+        secret_row.grid(row=2, column=1, sticky=tk.W, pady=4)
+        self._secret = ttk.Entry(secret_row, width=34, show="*")
+        self._secret.pack(side=tk.LEFT)
+        self._show_secret = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            secret_row,
+            text="表示",
+            variable=self._show_secret,
+            command=lambda: self._secret.configure(
+                show="" if self._show_secret.get() else "*"
+            ),
+        ).pack(side=tk.LEFT, padx=(6, 0))
+
+        ttk.Label(frame, text="リージョン:").grid(
+            row=3, column=0, sticky=tk.E, padx=(0, 8), pady=4
+        )
+        self._region = ttk.Combobox(frame, width=42, values=self._REGIONS)
+        self._region.grid(row=3, column=1, sticky=tk.W, pady=4)
+
+        ttk.Separator(frame, orient=tk.HORIZONTAL).grid(
+            row=4, column=0, columnspan=2, sticky=tk.EW, pady=14
+        )
+
+        self._mfa_enabled = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            frame,
+            text="MFA（多要素認証）を使用する",
+            variable=self._mfa_enabled,
+            command=self._on_mfa_toggle,
+        ).grid(row=5, column=0, columnspan=2, sticky=tk.W)
+
+        ttk.Label(
+            frame,
+            text="MFA が必須の IAM ユーザーのみ有効にしてください。\n"
+            "接続のたびに 6 桁コードを入力します（約 12 時間有効）。",
+            font=("", 8),
+            foreground="#555",
+            justify=tk.LEFT,
+        ).grid(row=6, column=0, columnspan=2, sticky=tk.W, padx=(22, 0), pady=(2, 8))
+
+        ttk.Label(frame, text="MFA デバイス:").grid(
+            row=7, column=0, sticky=tk.E, padx=(0, 8), pady=4
+        )
+        self._mfa_serial = ttk.Entry(frame, width=44)
+        self._mfa_serial.grid(row=7, column=1, sticky=tk.W, pady=4)
+        ttk.Label(
+            frame,
+            text="空欄なら自動検出します（iam:ListMFADevices 権限が必要）",
+            font=("", 8),
+            foreground="#555",
+        ).grid(row=8, column=1, sticky=tk.W)
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.grid(row=9, column=0, columnspan=2, pady=(20, 0))
+        ttk.Button(btn_frame, text="保存", command=self._on_ok, width=12).pack(
+            side=tk.LEFT, padx=4
+        )
+        ttk.Button(
+            btn_frame, text="接続テスト", command=self._on_test, width=12
+        ).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="キャンセル", command=self._on_cancel, width=12).pack(
+            side=tk.LEFT, padx=4
+        )
+
+        # 既存値の反映
+        s = settings or AwsSettings()
+        self._access_key.insert(0, s.access_key_id)
+        self._secret.insert(0, s.secret_access_key)
+        self._region.set(s.region or "ap-northeast-1")
+        self._mfa_enabled.set(bool(s.mfa_enabled))
+        self._mfa_serial.insert(0, s.mfa_serial)
+        self._on_mfa_toggle()
+
+        self._access_key.focus_set()
+        self._dlg.protocol("WM_DELETE_WINDOW", self._on_cancel)
+        self._dlg.wait_window()
+
+    def _on_mfa_toggle(self) -> None:
+        self._mfa_serial.configure(
+            state="normal" if self._mfa_enabled.get() else "disabled"
+        )
+
+    def _collect(self) -> AwsSettings | None:
+        access_key = self._access_key.get().strip()
+        secret = self._secret.get().strip()
+        region = self._region.get().strip()
+
+        if not access_key:
+            messagebox.showwarning(
+                "入力エラー", "アクセスキー ID を入力してください。", parent=self._dlg
+            )
+            return None
+        if not secret:
+            messagebox.showwarning(
+                "入力エラー", "シークレットを入力してください。", parent=self._dlg
+            )
+            return None
+        if not region:
+            messagebox.showwarning(
+                "入力エラー", "リージョンを入力してください。", parent=self._dlg
+            )
+            return None
+
+        return AwsSettings(
+            access_key_id=access_key,
+            secret_access_key=secret,
+            region=region,
+            mfa_enabled=self._mfa_enabled.get(),
+            mfa_serial=self._mfa_serial.get().strip(),
+        )
+
+    def _on_test(self) -> None:
+        from ttp.aws import AwsAuth, AwsError
+
+        settings = self._collect()
+        if settings is None:
+            return
+
+        auth = AwsAuth(
+            settings,
+            mfa_provider=lambda serial: MfaCodeDialog(self._dlg, serial).result,
+        )
+        try:
+            identity = auth.identity()
+        except AwsError as e:
+            messagebox.showerror("接続テスト", str(e), parent=self._dlg)
+            return
+
+        messagebox.showinfo(
+            "接続テスト",
+            "接続できました。\n\n"
+            f"アカウント: {identity['Account']}\n"
+            f"ARN: {identity['Arn']}",
+            parent=self._dlg,
+        )
+
+    def _on_ok(self) -> None:
+        settings = self._collect()
+        if settings is None:
+            return
+        self.result = settings
+        self._dlg.destroy()
+
+    def _on_cancel(self) -> None:
+        self.result = None
         self._dlg.destroy()

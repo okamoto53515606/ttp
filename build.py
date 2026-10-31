@@ -50,8 +50,6 @@ def build() -> None:
         for file in out.rglob("*"):
             arcname = f"ttp/{file.relative_to(out)}"
             zf.write(file, arcname)
-        # logs/ は空フォルダなので明示的にディレクトリエントリを追加
-        zf.mkdir("ttp/logs/")
 
     zip_size_mb = zip_path.stat().st_size / (1024 * 1024)
 

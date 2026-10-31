@@ -19,7 +19,7 @@ from ttp.crypto import (
     encrypt,
     decrypt,
 )
-from ttp.models import Connection, AppSettings
+from ttp.models import Connection, AppSettings, AwsSettings
 
 
 def get_app_dir() -> Path:
@@ -138,6 +138,48 @@ class ConnectionStore:
         """古い鍵で復号→新しい鍵で再暗号化する。"""
         connections = self.load(old_key)
         self.save(connections, new_key)
+        return True
+
+
+# ── AWS 接続設定 ──────────────────────────────────────────
+
+
+class AwsStore:
+    """AWS 認証情報 (暗号化) を管理する。
+
+    アクセスキーという長期クレデンシャルを扱うため、
+    接続情報と同じマスターパスワード由来の鍵で暗号化する。
+    """
+
+    def __init__(self) -> None:
+        self._path = get_data_dir() / "aws.enc"
+
+    def exists(self) -> bool:
+        return self._path.is_file()
+
+    def load(self, key: bytes) -> AwsSettings:
+        """設定を復号化して読み込む。未設定・復号失敗時は空設定を返す。"""
+        if not self._path.is_file():
+            return AwsSettings()
+        try:
+            raw = self._path.read_bytes()
+            if not raw:
+                return AwsSettings()
+            decrypted = decrypt(raw, key)
+            data = json.loads(decrypted.decode("utf-8"))
+            return AwsSettings.from_dict(data)
+        except Exception:
+            return AwsSettings()
+
+    def save(self, aws: AwsSettings, key: bytes) -> None:
+        plaintext = json.dumps(aws.to_dict(), ensure_ascii=False, indent=2).encode(
+            "utf-8"
+        )
+        self._path.write_bytes(encrypt(plaintext, key))
+
+    def re_encrypt(self, old_key: bytes, new_key: bytes) -> bool:
+        aws = self.load(old_key)
+        self.save(aws, new_key)
         return True
 
 

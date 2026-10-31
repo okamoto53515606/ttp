@@ -45,7 +45,22 @@
 
 3. `ttp.exe` をダブルクリックして起動します
 
-<!-- TODO: exeを起動する画像を追加 -->
+#### 初回起動時に警告が出た場合
+
+コード署名を付けていないため、初回起動時に Microsoft Defender SmartScreen が
+「Windows によって PC が保護されました」と表示されることがあります。
+
+![SmartScreen の警告](screenshot/windows_alert.png)
+
+1. 赤枠の **「詳細情報」** をクリック
+2. 表示された **「実行」** をクリック
+
+で起動できます。2 回目以降は表示されません。
+
+> **なぜ表示されるの？** TTP は個人が配布している実行ファイルで、コード署名証明書を
+> 使っていないためです。内容を確かめたい場合は、配布元の GitHub リポジトリ
+> （https://github.com/okamoto53515606/ttp）のソースから
+> `uv run python build.py` で自分でビルドすることもできます。
 
 ---
 
@@ -238,6 +253,185 @@ Are you sure you want to continue connecting (yes/no)?
 - Tera Term のホスト鍵キャッシュは `TERATERM.INI` の設定に従います（デフォルトではレジストリに保存）
 
 ---
+
+## AWS から接続（SSM / ECS Exec） <sup>v1.2.0 追加</sup>
+
+SSH の代わりに、AWS Systems Manager（Session Manager）と ECS Exec で
+シェルに入る機能です。**sshd のインストールも、インバウンドポートの開放も不要**です。
+
+![AWS メニュー](screenshot/aws_menu.png)
+
+メニューの「AWS」から次の 2 つを開けます。
+
+| メニュー | 用途 |
+|---|---|
+| AWS 設定... | アクセスキー・リージョン・MFA の設定 |
+| AWS から接続...（Ctrl+Shift+A） | 接続先の一覧 |
+
+### 1. 必要なツールを入れる
+
+この機能を使うには **Session Manager プラグイン** が必要です。
+**TTP には同梱されていません**ので、各自インストールしてください。
+
+| ツール | 要否 | サイズ目安 |
+|---|---|---|
+| Session Manager プラグイン | **必要**（これを入れれば完結） | 10〜20MB |
+| AWS CLI v2 | 任意（プラグインが無い場合の代替） | 約 250MB |
+
+> v1.2.0 以降、AWS CLI が無くてもプラグインだけで接続できます。
+
+#### Session Manager プラグインのインストール
+
+1. 次のページを開く
+
+   https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
+
+2. 「Windows」の項目から 64 ビット版の MSI をダウンロード
+3. ダウンロードした MSI を実行する
+
+   ![Session Manager プラグインのセットアップ画面](screenshot/when_exe.png)
+
+   「I agree to the license terms and conditions」にチェックを入れ、
+   「Install」を押します。
+
+4. PowerShell を開いて、次のコマンドで確認
+
+```powershell
+session-manager-plugin --version
+```
+
+バージョン番号が表示されれば成功です。
+
+> **注意（zip 版は非推奨）**: 「SessionManagerPlugin.zip」を展開して `install.bat` を
+> 管理者で実行する方法もありますが、最後の「Set environment path variable.」で
+> 止まることがあります。**MSI（SessionManagerPluginSetup.exe）を推奨**します。
+>
+> ![zip 版 install.bat が止まった例](screenshot/when_zip.png)
+>
+> zip 版で止まった場合でも、`C:\Program Files\Amazon\SessionManagerPlugin\bin\` に
+> ファイルが配置されていれば **TTP はそのまま使えます**（PATH が未設定でも
+> 既定のフォルダを探します）。また zip 版は不要な `session-manager-plugin`
+> サービスを登録するので、気になる場合は管理者 PowerShell で
+> `sc.exe delete session-manager-plugin` を実行してください。
+
+#### （任意）AWS CLI v2 のインストール
+
+Session Manager プラグインを入れた場合は不要です。
+プラグインを入れられない環境での代替手段として使えます。
+
+1. 次のページを開く
+
+   https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+
+2. 「Windows」の MSI をダウンロードして実行
+3. PowerShell で確認
+
+```powershell
+aws --version
+```
+
+#### インストール後にやること
+
+- **TTP を再起動してください。** PATH はプロセス起動時に読み込まれるため、
+  TTP を開いたままインストールした場合は再起動が必要です。
+- ツールが見つからない場合、TTP は「AWS から接続」を開いたとき、
+  および接続しようとしたときに **ポップアップで案内**します。
+  ポップアップの「ページを開く」ボタンからダウンロードページを開けます。
+- Session Manager プラグインと AWS CLI の**どちらか一方**があれば接続できます。
+
+### 2. AWS 設定を登録する
+
+1. メニューの「AWS」→「AWS 設定...」を開く
+2. 次の 3 つを入力する
+   - アクセスキー ID
+   - シークレットアクセスキー
+   - リージョン
+3. 必要なら「接続テスト」を押す（アカウント ID と ARN が表示されます）
+4. 「保存」を押す
+
+入力値はマスターパスワード由来の鍵で暗号化され、`ttp_data/aws.enc` に保存されます。
+
+![AWS 設定ダイアログ](screenshot/aws_setting.png)
+
+### 3. MFA を使っている場合
+
+IAM ユーザーに「MFA 必須」のポリシーを敷いている場合だけ、
+「MFA を使用する」にチェックを入れてください。
+
+- 接続時に 6 桁コードの入力ダイアログが出ます
+- 一度入力すると約 12 時間は再利用されます
+- **MFA を使っていないユーザーは何も入力不要**です
+
+MFA デバイスの欄が空欄なら、自動検出を試みます
+（`iam:ListMFADevices` 権限が必要）。失敗する場合は ARN を直接入力してください。
+
+### 4. 接続する
+
+1. メニューの「AWS」→「AWS から接続...」（Ctrl+Shift+A）
+2. 一覧が表示されるので、対象をダブルクリック
+
+```
+EC2 (2)
+  web-prod-01        Online    t3.micro / Linux / 10.0.1.23
+ECS (3)
+  cluster-prod (3)
+    svc-api (2)
+      3f9a1c2d4e5f   Exec 可   app:12 / FARGATE / 2026-10-31 09:00 / app
+```
+
+![AWS から接続の一覧](screenshot/aws_list.png)
+
+一覧の見方:
+
+| 表示 | 意味 |
+|---|---|
+| Online | SSM 経由で接続できる |
+| SSM 未登録 | SSM Agent が無い、またはネットワーク到達不可 |
+| Exec 可 | ECS Exec で接続できる |
+| Exec 無効 | タスクで ECS Exec が無効（新規起動が必要） |
+
+「接続可能のみ」のチェックを外すと、接続できないものもグレー表示されます
+（原因調査用）。「更新」（F5）で最新の状態を取り直します。
+
+> **起動直後のタスクは一時的に非表示になります。** Fargate タスクは起動後、
+> `ExecuteCommandAgent` が RUNNING になるまで数十秒かかります。その間は
+> 「接続可能のみ」が ON だと一覧に出ません。ステータスバーに
+> 「非表示 N 件（接続可能のみ ON）」と表示されるので、少し待って再更新してください。
+
+**「自動更新(30秒)」** にチェックすると、30 秒ごとに一覧を取り直します。
+サービス配下のタスクはデプロイやスケールで入れ替わるため、これを入れておくと
+追従できます。MFA の有効期限が切れた場合は自動更新を止めて案内を表示します
+（勝手にコード入力ダイアログは出しません）。
+
+ECS のタスクは **新しい順（起動日時の降順）** に並びます。
+デプロイ直後のタスクを探すときに便利です。
+
+#### 接続後の画面
+
+EC2（SSM）に接続すると、`ssm-user` でシェルが開きます。
+
+![EC2 への SSM 接続](screenshot/connect_ec2.png)
+
+Fargate（ECS Exec）に接続すると、コンテナ内のシェルが開きます（既定では `root`）。
+
+![Fargate タスクへの ECS Exec 接続](screenshot/connect_fargate_task.png)
+
+> **補足**: コンテナ内には `sudo` が入っていないことが多いため、`sudo su -` は
+> `sh: sudo: command not found` になります。ECS Exec は既定で `root` なので実行不要です。
+
+### 5. トラブルシューティング
+
+| 症状 | 対処 |
+|---|---|
+| 「必要なツールがありません」 | Session Manager プラグイン（または AWS CLI v2）を入れて TTP を再起動 |
+| `install.bat` が「Set environment path variable.」で止まる | ウィンドウを閉じてよい。TTP は既定のフォルダを探すので動作する（MSI 版推奨） |
+| 一覧が古い | 「更新」（F5）または「自動更新(30秒)」を使う |
+| EC2 が一覧に出ない | SSM Agent の稼働、インスタンスプロファイル、VPC エンドポイントを確認 |
+| EC2 が「SSM 未登録」 | 上記に加え、アウトバウンド 443 が通っているか確認 |
+| ECS タスクが「Exec 無効」 | `enableExecuteCommand=true` で新しいタスクを起動する（既存タスクには後付け不可） |
+| 認証エラー | アクセスキー・シークレット・リージョンを確認。「接続テスト」で切り分け |
+| MFA エラー | 「MFA を使用する」を有効にし、コードを入力 |
+| 20 分で切れる | Session Manager のアイドルタイムアウト（設定で延長可能） |
 
 ## ログフォルダを開く
 
