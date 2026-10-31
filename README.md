@@ -164,6 +164,43 @@ uv run python build.py
 `dist/ttp/` フォルダに `ttp.exe` が生成されます。  
 フォルダごとzip圧縮して配布してください。
 
+## リリース手順
+
+### 自動（毎月）
+
+`.github/workflows/update-deps.yml` が **毎月 1 日 3:00 JST** に動きます。
+
+1. `uv lock --upgrade` で依存を最新化
+2. スモークチェック
+3. パッチバージョンを上げてコミット＋タグ push
+4. `release.yml` が exe をビルドして GitHub Release を作成（zip 添付）
+
+変更が無かった月は何も起きません。手動で回す場合は Actions から
+`Monthly dependency update` を `Run workflow` してください。
+
+### 手動
+
+```powershell
+uv run python scripts/update_deps.py          # 依存更新 + スモークチェック
+uv run python scripts/bump_version.py patch   # 例: 1.2.0 -> 1.2.1
+uv run python build.py                        # exe と zip をビルド
+git add -A
+git commit -m "chore: release vX.Y.Z"
+git tag vX.Y.Z
+git push origin main --tags                   # タグ push でリリースが作られる
+```
+
+リリースノートを自分で書きたい場合は、タグを push せずに次を実行します
+（`docs/release-notes/v1.2.0.md` をコピーして使うと楽です）。
+
+```powershell
+gh release create vX.Y.Z "dist/ttp-X.Y.Z.zip" `
+  --title "vX.Y.Z" --notes-file docs/release-notes/vX.Y.Z.md
+```
+
+> `gh release create` がタグも作るため、後から `release.yml` が起動しますが、
+> **既にリリースがあればスキップ**するので二重作成にはなりません。
+
 ## アンインストール
 
 フォルダを削除するだけです。  

@@ -20,16 +20,33 @@ jobs:
           python-version: "3.12"
           enable-cache: true
 
+      - name: 既存リリースの確認
+        id: existing
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "リリース $GITHUB_REF_NAME は既に存在するためスキップします"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 依存をインストール
+        if: steps.existing.outputs.found == 'false'
         run: uv sync
 
       - name: スモークチェック
+        if: steps.existing.outputs.found == 'false'
         run: uv run python scripts/smoke_check.py
 
       - name: exe と zip をビルド
+        if: steps.existing.outputs.found == 'false'
         run: uv run python build.py
 
       - name: GitHub Release を作成
+        if: steps.existing.outputs.found == 'false'
         uses: softprops/action-gh-release@v2
         with:
           files: dist/ttp-*.zip
