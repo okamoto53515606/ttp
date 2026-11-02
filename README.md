@@ -171,9 +171,13 @@ uv run python build.py
 `.github/workflows/update-deps.yml` が **毎月 1 日 3:00 JST** に動きます。
 
 1. `uv lock --upgrade` で依存を最新化
-2. スモークチェック
+2. スモークチェック・依存の脆弱性チェック
 3. パッチバージョンを上げてコミット＋タグ push
-4. `release.yml` が exe をビルドして GitHub Release を作成（zip 添付）
+4. 同じワークフロー内で exe をビルドし、GitHub Release を作成（zip 添付）
+
+> `GITHUB_TOKEN` で push したタグは他のワークフローを起動しないため、
+> 月次更新ではビルドとリリースを同じワークフロー内で行っています。
+> `release.yml` は、人が手でタグを push したときに動作します。
 
 変更が無かった月は何も起きません。手動で回す場合は Actions から
 `Monthly dependency update` を `Run workflow` してください。

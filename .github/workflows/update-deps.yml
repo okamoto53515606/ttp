@@ -77,4 +77,17 @@ jobs:
           git tag "v${VERSION}"
           git push origin HEAD --tags
 
-          # タグ push により Release ワークフローが exe をビルドして配布する
+      - name: exe と zip をビルド
+        if: steps.diff.outputs.changed == 'true'
+        run: uv run python build.py
+
+      - name: GitHub Release を作成
+        if: steps.diff.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          # GITHUB_TOKEN で push したタグは release.yml を起動しないため、ここで作成する
+          gh release create "v${VERSION}" "dist/ttp-${VERSION}.zip" \
+            --title "v${VERSION}" --generate-notes
