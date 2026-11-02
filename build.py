@@ -27,6 +27,7 @@ def build() -> None:
             "src/ttp/__main__.py",
             "--name=ttp",
             "--noconsole",
+            "--icon=resources/ttp.ico",
             "--add-data=resources;resources",
             "--noconfirm",
             "--clean",

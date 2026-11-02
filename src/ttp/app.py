@@ -19,6 +19,7 @@ from ttp.storage import (
     SettingsStore,
     AwsStore,
     get_log_dir,
+    get_resource_dir,
 )
 from ttp.teraterm import launch_connection
 from ttp.aws_browser import AwsBrowserWindow
@@ -39,6 +40,7 @@ class TTPApp:
     def __init__(self) -> None:
         self._root = tk.Tk()
         self._root.title("TTP - Tera Term Pilot")
+        self._apply_icon()
         # 認証中は非表示（withdrawではなく画面外に小さく配置）
         self._root.geometry("1x1+-100+-100")
         self._root.attributes("-alpha", 0)  # 完全透明
@@ -52,6 +54,19 @@ class TTPApp:
         self._connections: list[Connection] = []
         self._settings: AppSettings = AppSettings()
         self._aws: AwsSettings = AwsSettings()
+
+    def _apply_icon(self) -> None:
+        """ウィンドウアイコンを設定する（resources/ttp.png）。"""
+        png = get_resource_dir() / "ttp.png"
+        if not png.is_file():
+            return
+        try:
+            # GC されないよう参照を保持する
+            self._icon_image = tk.PhotoImage(master=self._root, file=str(png))
+            # default=True で以後の Toplevel にも適用される
+            self._root.iconphoto(True, self._icon_image)
+        except tk.TclError:
+            pass  # アイコンが読めなくても起動は継続する
 
     def run(self) -> None:
         """アプリを起動する。"""

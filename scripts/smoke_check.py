@@ -43,7 +43,7 @@ def main() -> int:
         errors.append(f"import 失敗: {type(e).__name__}: {e}")
 
     if not errors:
-        from ttp import session, terminal
+        from ttp import session, storage, terminal
 
         # シングルクォートのエスケープ
         assert terminal._ps_quote("a'b") == "'a''b'", "PowerShell 引用が不正"
@@ -70,6 +70,14 @@ def main() -> int:
         # バージョン文字列の解釈
         assert session.plugin_version("no-such-plugin.exe") is None
         print("plugin version parse: OK")
+
+        # アイコン資源（exe 用 .ico / ウィンドウ用 .png）
+        res_dir = storage.get_resource_dir()
+        for name in ("ttp.ico", "ttp.png"):
+            if not (res_dir / name).is_file():
+                errors.append(f"アイコンがありません: {res_dir / name}（scripts/make_icon.py で生成）")
+        if not errors:
+            print("icon resources: OK")
 
         # セッション情報のキー形式（SSM=PascalCase / ECS=camelCase）
         camel = {"sessionId": "s", "tokenValue": "t", "streamUrl": "u"}
