@@ -64,6 +64,13 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "次のバージョン: $VERSION"
 
+      - name: ロックファイルをバージョンに追従させる
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          # bump_version.py は uv run 経由で実行されるため、その時点の lock は旧バージョンのまま。
+          # コミット前に uv lock でプロジェクト版を揃える。
+          uv lock
+
       - name: コミットしてタグを push
         if: steps.diff.outputs.changed == 'true'
         shell: bash
