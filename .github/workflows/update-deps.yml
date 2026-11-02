@@ -31,12 +31,14 @@ jobs:
         id: diff
         shell: bash
         run: |
-          if git diff --quiet -- uv.lock pyproject.toml; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "更新はありませんでした"
-          else
+          # パッケージの name / version（クォート付き）が変わったときだけ「更新あり」とみなす。
+          # `revision = 5` のような lockfile 形式の変更だけの場合はリリースしない。
+          if git diff -U0 -- uv.lock pyproject.toml | grep -qE '^[+-](name|version) = "'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             git --no-pager diff --stat -- uv.lock pyproject.toml
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "更新はありませんでした（lockfile の形式変更のみの場合はスキップ）"
           fi
 
       - name: 依存を同期
