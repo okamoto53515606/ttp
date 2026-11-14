@@ -15,11 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v5
-        with:
-          python-version: "3.14"
-          enable-cache: true
-
       - name: 既存リリースの確認
         id: existing
         shell: bash
@@ -32,6 +27,14 @@ jobs:
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
           fi
+
+      # 既存リリース時は uv を使わないので、setup-uv ごとスキップする
+      # （スキップしないと post ステップのキャッシュ保存で失敗する）
+      - uses: astral-sh/setup-uv@v5
+        if: steps.existing.outputs.found == 'false'
+        with:
+          python-version: "3.14"
+          enable-cache: true
 
       - name: 依存をインストール
         if: steps.existing.outputs.found == 'false'
