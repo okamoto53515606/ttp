@@ -25,6 +25,7 @@ class Connection:
     hop_enabled: bool = False
     hop_prompt1: str = ""   # 踏み台ログイン後のプロンプト
     hop_cmd1: str = ""      # 踏み台で実行するコマンド (例: ssh user@target)
+    hop_key_auth: bool = False  # ターゲットが鍵認証 (PWプロンプトなし)
     hop_prompt2: str = ""   # ターゲットのパスワードプロンプト (例: "password:")
     hop_password: str = ""  # ターゲットのパスワード
     hop_prompt3: str = ""   # ターゲットログイン後のプロンプト

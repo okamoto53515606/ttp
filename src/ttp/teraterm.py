@@ -112,8 +112,13 @@ def launch_connection(
     env["TT_TTL_HOP_ENABLED"] = "1" if connection.hop_enabled else "0"
     env["TT_TTL_HOP_PROMPT1"] = connection.hop_prompt1
     env["TT_TTL_HOP_CMD1"] = connection.hop_cmd1
-    env["TT_TTL_HOP_PROMPT2"] = connection.hop_prompt2
-    env["TT_TTL_HOP_PASSWORD"] = connection.hop_password
+    # ターゲットが鍵認証の場合は PW 待ち・PW 送信を行わない
+    env["TT_TTL_HOP_PROMPT2"] = (
+        "" if connection.hop_key_auth else connection.hop_prompt2
+    )
+    env["TT_TTL_HOP_PASSWORD"] = (
+        "" if connection.hop_key_auth else connection.hop_password
+    )
     env["TT_TTL_HOP_PROMPT3"] = connection.hop_prompt3
     env["TT_TTL_HOP_CMD3"] = connection.hop_cmd3
 

@@ -340,7 +340,7 @@ class ConnectionDialog:
         self._dlg.resizable(False, False)
         _setup_dialog(self._dlg, parent)
 
-        _center_window(self._dlg, 500, 680)
+        _center_window(self._dlg, 500, 720)
 
         # スクロール可能なキャンバス
         canvas = tk.Canvas(self._dlg, borderwidth=0, highlightthickness=0)
@@ -482,25 +482,60 @@ class ConnectionDialog:
         self._hop_widgets.append(self._hop_cmd1)
         row += 1
 
+        # ターゲットが鍵認証（PW要求なし）
+        self._hop_key_auth_var = tk.BooleanVar(value=False)
+        self._hop_key_auth_chk = ttk.Checkbutton(
+            frame,
+            text="ターゲットは鍵認証（パスワード入力なし）",
+            variable=self._hop_key_auth_var,
+            command=self._on_hop_toggle,
+        )
+        self._hop_key_auth_chk.grid(
+            row=row, column=0, columnspan=3, sticky=tk.W, padx=(20, 0), pady=(2, 2)
+        )
+        self._hop_widgets.append(self._hop_key_auth_chk)
+        row += 1
+
+        ttk.Label(
+            frame,
+            text="鍵認証の場合: コマンド1 に -i で鍵を指定。プロンプト2 と\n"
+            "ターゲットPW は空で保存されます。",
+            foreground="#555",
+            font=("", 8),
+            justify=tk.LEFT,
+        ).grid(row=row, column=0, columnspan=3, sticky=tk.W, padx=(34, 0), pady=(0, 4))
+        row += 1
+
         # プロンプト2 (パスワード要求)
-        ttk.Label(frame, text="プロンプト2 (PW要求):").grid(row=row, column=0, sticky=tk.E, padx=(0, 8), pady=4)
+        self._hop_prompt2_label = ttk.Label(frame, text="プロンプト2 (PW要求):")
+        self._hop_prompt2_label.grid(row=row, column=0, sticky=tk.E, padx=(0, 8), pady=4)
         self._hop_prompt2 = ttk.Entry(frame, width=35)
         self._hop_prompt2.grid(row=row, column=1, columnspan=2, sticky=tk.W, pady=4)
         self._hop_widgets.append(self._hop_prompt2)
         row += 1
 
         # ターゲットパスワード
-        ttk.Label(frame, text="ターゲットPW:").grid(row=row, column=0, sticky=tk.E, padx=(0, 8), pady=4)
+        self._hop_pw_label = ttk.Label(frame, text="ターゲットPW:")
+        self._hop_pw_label.grid(row=row, column=0, sticky=tk.E, padx=(0, 8), pady=4)
         hop_pw_frame = ttk.Frame(frame)
         hop_pw_frame.grid(row=row, column=1, columnspan=2, sticky=tk.W, pady=4)
         self._hop_password = ttk.Entry(hop_pw_frame, show="*", width=25)
         self._hop_password.pack(side=tk.LEFT)
         self._hop_show_pw_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
+        self._hop_show_pw_chk = ttk.Checkbutton(
             hop_pw_frame, text="表示", variable=self._hop_show_pw_var,
             command=self._toggle_hop_password,
-        ).pack(side=tk.LEFT, padx=5)
-        self._hop_widgets.extend([self._hop_password, hop_pw_frame.winfo_children()[1]])
+        )
+        self._hop_show_pw_chk.pack(side=tk.LEFT, padx=5)
+        self._hop_widgets.extend([self._hop_password, self._hop_show_pw_chk])
+        # 鍵認証時は PW 関連だけを無効化する
+        self._hop_no_pw_widgets = [
+            self._hop_prompt2_label,
+            self._hop_prompt2,
+            self._hop_pw_label,
+            self._hop_password,
+            self._hop_show_pw_chk,
+        ]
         row += 1
 
         # プロンプト3
@@ -540,6 +575,7 @@ class ConnectionDialog:
                 self._hop_enabled_var.set(True)
                 self._hop_prompt1.insert(0, connection.hop_prompt1)
                 self._hop_cmd1.insert(0, connection.hop_cmd1)
+                self._hop_key_auth_var.set(connection.hop_key_auth)
                 self._hop_prompt2.insert(0, connection.hop_prompt2)
                 self._hop_password.insert(0, connection.hop_password)
                 self._hop_prompt3.insert(0, connection.hop_prompt3)
@@ -567,12 +603,25 @@ class ConnectionDialog:
         self._hop_password.config(show="" if self._hop_show_pw_var.get() else "*")
 
     def _on_hop_toggle(self) -> None:
-        state = "normal" if self._hop_enabled_var.get() else "disabled"
+        hop_on = self._hop_enabled_var.get()
+        state = "normal" if hop_on else "disabled"
         for w in self._hop_widgets:
             try:
                 w.configure(state=state)
             except Exception:
                 pass
+
+        # 鍵認証ではプロンプト2 / ターゲットPW を使わない
+        no_pw = hop_on and self._hop_key_auth_var.get()
+        no_pw_state = "disabled" if (not hop_on or no_pw) else "normal"
+        for w in self._hop_no_pw_widgets:
+            try:
+                w.configure(state=no_pw_state)
+            except Exception:
+                pass
+        if no_pw and self._hop_show_pw_var.get():
+            self._hop_show_pw_var.set(False)
+            self._hop_password.config(show="*")
 
     def _browse_key(self) -> None:
         path = filedialog.askopenfilename(
@@ -616,6 +665,8 @@ class ConnectionDialog:
             messagebox.showwarning("入力エラー", "公開鍵認証の場合は鍵ファイルを選択してください。", parent=self._dlg)
             return
 
+        hop_key_auth = bool(self._hop_enabled_var.get() and self._hop_key_auth_var.get())
+
         from datetime import datetime
 
         now = datetime.now().isoformat()
@@ -634,8 +685,10 @@ class ConnectionDialog:
             hop_enabled=self._hop_enabled_var.get(),
             hop_prompt1=self._hop_prompt1.get().strip(),
             hop_cmd1=self._hop_cmd1.get().strip(),
-            hop_prompt2=self._hop_prompt2.get().strip(),
-            hop_password=self._hop_password.get(),
+            # 鍵認証ではプロンプト2 / ターゲットPW を保存しない
+            hop_key_auth=hop_key_auth,
+            hop_prompt2="" if hop_key_auth else self._hop_prompt2.get().strip(),
+            hop_password="" if hop_key_auth else self._hop_password.get(),
             hop_prompt3=self._hop_prompt3.get().strip(),
             hop_cmd3=self._hop_cmd3.get().strip(),
             id=conn_id,
