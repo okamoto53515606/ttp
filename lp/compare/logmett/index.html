@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LogMeTT は Tera Term 5.0 で削除されました — 代替と移行</title>
+<meta name="description" content="Tera Term 5.0（2023年10月）で LogMeTT と TTLEditor がインストーラから削除されました。ソース非公開のため復活していません。代替手段と、TTP への移行手順をまとめます。">
+<link rel="canonical" href="https://ttpilot.okamomedia.tokyo/compare/logmett/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b6b7a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TTP (Tera Term Pilot)">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="LogMeTT は Tera Term 5.0 で削除されました — 代替と移行">
+<meta property="og:description" content="Tera Term 5.0 で LogMeTT と TTLEditor は同梱されなくなりました。代替手段と移行手順をまとめます。">
+<meta property="og:url" content="https://ttpilot.okamomedia.tokyo/compare/logmett/">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://ttpilot.okamomedia.tokyo/compare/logmett/#article",
+      "headline": "LogMeTT は Tera Term 5.0 で削除されました",
+      "description": "Tera Term 5.0 で LogMeTT と TTLEditor が削除された経緯と、代替手段・移行手順をまとめる。",
+      "inLanguage": "ja",
+      "datePublished": "2026-11-14",
+      "dateModified": "2026-11-14",
+      "author": { "@type": "Person", "name": "okamo", "url": "https://www.okamomedia.tokyo/" },
+      "publisher": { "@type": "Organization", "name": "okamomedia" },
+      "mainEntityOfPage": "https://ttpilot.okamomedia.tokyo/compare/logmett/",
+      "about": { "@id": "https://ttpilot.okamomedia.tokyo/#app" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "TTP", "item": "https://ttpilot.okamomedia.tokyo/" },
+        { "@type": "ListItem", "position": 2, "name": "LogMeTT からの移行", "item": "https://ttpilot.okamomedia.tokyo/compare/logmett/" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へ移動</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/">
+      <img src="/favicon.svg" alt="" width="24" height="24">
+      <span class="brand-text">TTP<small>Tera Term Pilot</small></span>
+    </a>
+    <nav class="nav" aria-label="サイト内メニュー">
+      <a href="/guide/macro/">できること</a>
+      <a href="/guide/no-plaintext/">パスワード</a>
+      <a href="/compare/teraterm-menu/">比較</a>
+      <a href="/aws/ssm/">AWS</a>
+      <a href="/security/">セキュリティ</a>
+      <a class="btn btn-sm" href="https://github.com/okamoto53515606/ttp/releases/latest">ダウンロード</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+  <nav class="crumbs" aria-label="パンくず">
+    <ol>
+      <li><a href="/">TTP</a></li>
+      <li>LogMeTT からの移行</li>
+    </ol>
+  </nav>
+</div>
+
+<article class="article">
+  <div class="wrap">
+    <h1>LogMeTT は Tera Term 5.0 で削除されました</h1>
+    <p class="lead">
+      Tera Term を 5 系に上げたあと、マクロのランチャーが見当たらない。
+      それは気のせいではなく、<strong>LogMeTT がインストーラから削除された</strong>ためです。
+    </p>
+
+    <h2>何が起きたのか</h2>
+    <p>2023年10月15日の Tera Term 5.0 で、LogMeTT・TTLEditor・Collector がインストーラから削除されました。公式の「Tera Term 5 への移行」ページには、次のように明記されています。</p>
+    <blockquote>
+      LogMeTT, TTLEditor, Collector はインストーラから削除されました。これらはソースが公開されておらず、オープンソースライセンスでもありません。
+    </blockquote>
+    <p>削除の理由が「ソース非公開だから」である点が重要です。バグ修正や再ビルドの見込みが立てられないため、今後 Tera Term に戻ってくる可能性は低いと考えられます。</p>
+    <p>なお、<strong>TeraTerm Menu は削除されていません</strong>。Tera Term 5.7.0 でも v1.24 が同梱されています。「Tera Term 5 で同梱ツールが全部なくなった」わけではない点に注意してください。</p>
+
+    <h2>LogMeTT が担っていた役割</h2>
+    <ul>
+      <li>接続先を一覧から選んで、Tera Term を起動する</li>
+      <li>マクロを起点に、ログインまでを自動化する</li>
+      <li>TTLEditor でマクロを編集する</li>
+    </ul>
+
+    <h2>TTP で置き換えられること</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">LogMeTT でやっていたこと</th><th scope="col">TTP</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">接続先を一覧から選んで起動</th><td class="mark m-ok">接続先一覧 ＋ ダブルクリック</td></tr>
+          <tr><th scope="row">マクロによる自動ログイン</th><td class="mark m-ok">connect.ttl ＋ 環境変数</td></tr>
+          <tr><th scope="row">接続先ごとのマクロ管理</th><td class="mark m-ok">マクロは1本に集約</td></tr>
+          <tr><th scope="row">作業ログの取得</th><td class="mark m-ok">接続のたびに自動生成</td></tr>
+          <tr><th scope="row">マクロの編集（TTLEditor）</th><td class="mark m-ng">対象外</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>置き換えられないこと</h2>
+    <ul>
+      <li><strong>既存設定の自動移行はありません。</strong> LogMeTT に登録していた接続先は、TTP に登録し直す必要があります</li>
+      <li><strong>マクロの編集機能はありません。</strong> TTP のマクロは1本で、接続先ごとの差分は設定項目で表現する設計です</li>
+    </ul>
+    <p>マクロを頻繁に書き換える使い方をしていた場合は、TTP は向いていません。その場合は別のエディタで <code>.ttl</code> を管理する形になります。</p>
+
+    <h2>移行手順</h2>
+    <ol class="steps">
+      <li>
+        <h3>LogMeTT の接続先を控える</h3>
+        <p>ホスト名・ポート・ユーザ名・認証方式（パスワード／鍵）を一覧にして書き出します。パスワードは控える必要はありません。</p>
+      </li>
+      <li>
+        <h3>TTP を解凍して初期設定する</h3>
+        <p>zip を任意のフォルダに解凍し、<code>ttp.exe</code> を起動。マスターパスワードを設定し、ttpmacro.exe を選択します（Tera Term 4 / 5 を自動検出します）。</p>
+      </li>
+      <li>
+        <h3>接続先を登録する</h3>
+        <p>「新規追加」から、控えた内容を入力します。認証方式が鍵の場合は、秘密鍵のパスも指定します。</p>
+      </li>
+      <li>
+        <h3>接続して、ログが出ることを確認する</h3>
+        <p>一覧からダブルクリックして接続します。<code>logs</code> フォルダに <code>日時_接続名.log</code> が生成されていれば完了です。</p>
+      </li>
+      <li>
+        <h3>古いマクロを片付ける</h3>
+        <p>LogMeTT 用に作った <code>.ttl</code> が残っている場合は、パスワードが書かれていないか確認してから削除します。共有フォルダにある場合は特に優先してください。</p>
+      </li>
+    </ol>
+
+    <h2>Tera Term 4 を使い続ける、という選択について</h2>
+    <p>LogMeTT が同梱されていた Tera Term 4 系（4.108）に留まる選択は技術的には可能です。ただし 4 系の最後の公開は 2023年12月で、その後に TTSSH に見つかった脆弱性は 5 系でのみ修正されています。セキュリティ修正を受け取り続けるには 5 系へ移行し、ランチャー側を置き換えるのが安全です。</p>
+
+    <div class="next-links">
+      <a href="/compare/teraterm-menu/">
+        <span>比較</span>
+        <strong>TeraTerm Menu と TTP の違い</strong>
+      </a>
+      <a href="/guide/macro/">
+        <span>運用</span>
+        <strong>Tera Term のマクロを1本にまとめる</strong>
+      </a>
+    </div>
+
+    <p class="updated">最終更新: 2026年11月14日 / 引用元: Tera Term「Tera Term 5 への移行」「変更履歴」</p>
+  </div>
+</article>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="disclaimer">
+      TTP (Tera Term Pilot) は個人が開発した非公式ツールです。TeraTerm Project、寺西高氏、および各社とは関係ありません。
+      「Tera Term」は TeraTerm Project が開発するソフトウェアの名称です。
+    </p>
+    <p class="footer-meta">
+      <a href="https://github.com/okamoto53515606/ttp">GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/okamoto53515606/ttp/releases">リリース</a>
+      <span aria-hidden="true">·</span>
+      <a href="/llms.txt">llms.txt</a>
+      <span aria-hidden="true">·</span>
+      <span>MIT License</span>
+      <span aria-hidden="true">·</span>
+      <span>© 2026 okamo</span>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

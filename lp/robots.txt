@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# 検索エンジン・AI クローラーを区別せず、すべて許可する。
+# 本文はすべて静的な HTML で、JSON-LD による構造化データを含む。
+
+Sitemap: https://ttpilot.okamomedia.tokyo/sitemap.xml

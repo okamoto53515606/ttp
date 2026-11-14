@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TTP (Tera Term Pilot) — Tera Term の接続管理を、属人化させない</title>
+<meta name="description" content="Tera Term の接続先を GUI で管理し、マクロは1本を全員で共有。パスワードは AES-256 で暗号化して保持し、.ttl には何も書きません。ログは自動取得。Windows 11 向け・ポータブル・MIT ライセンス。">
+<link rel="canonical" href="https://ttpilot.okamomedia.tokyo/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b6b7a">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TTP (Tera Term Pilot)">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="TTP (Tera Term Pilot) — Tera Term の接続管理を、属人化させない">
+<meta property="og:description" content="接続先は GUI の一覧から選ぶだけ。マクロは1本を全員で共有。パスワードは暗号化して保持し、.ttl には残しません。">
+<meta property="og:url" content="https://ttpilot.okamomedia.tokyo/">
+<meta property="og:image" content="https://ttpilot.okamomedia.tokyo/assets/screenshots/TTPList.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://ttpilot.okamomedia.tokyo/#app",
+      "name": "TTP (Tera Term Pilot)",
+      "alternateName": ["TTP", "Tera Term Pilot"],
+      "description": "Tera Term マクロ (ttpmacro.exe) を GUI で管理・実行する Windows アプリ。接続先を一覧で管理し、マクロは1本を共有する。認証情報は AES-256 で暗号化して保持し、マクロファイルには書き出さない。接続ログは自動取得。SSM / ECS Exec による AWS 接続にも対応。",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "SSH Client",
+      "operatingSystem": "Windows 11",
+      "softwareVersion": "1.2.3",
+      "inLanguage": "ja",
+      "isAccessibleForFree": true,
+      "license": "https://opensource.org/licenses/MIT",
+      "url": "https://ttpilot.okamomedia.tokyo/",
+      "downloadUrl": "https://github.com/okamoto53515606/ttp/releases/latest",
+      "codeRepository": "https://github.com/okamoto53515606/ttp",
+      "screenshot": "https://ttpilot.okamomedia.tokyo/assets/screenshots/TTPList.png",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "JPY"
+      },
+      "featureList": [
+        "接続先をGUIの一覧で管理",
+        "Tera Term マクロを1本に集約",
+        "接続情報をAES-256で暗号化して保存",
+        "マクロファイルに認証情報を書き出さない",
+        "接続ログの自動取得",
+        "踏み台経由の多段接続",
+        "ポータブル動作（レジストリ不使用）",
+        "AWS SSM / ECS Exec 接続"
+      ],
+      "author": {
+        "@type": "Person",
+        "name": "okamo",
+        "url": "https://www.okamomedia.tokyo/"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://ttpilot.okamomedia.tokyo/#website",
+      "url": "https://ttpilot.okamomedia.tokyo/",
+      "name": "TTP (Tera Term Pilot)",
+      "inLanguage": "ja",
+      "publisher": {
+        "@id": "https://ttpilot.okamomedia.tokyo/#app"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://ttpilot.okamomedia.tokyo/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Tera Term 5 で LogMeTT が使えなくなりました。代わりになりますか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "はい。Tera Term 5.0 で LogMeTT と TTLEditor はインストーラから削除され、これらはソース非公開のため復活していません。TTP は接続先を一覧で管理し、マクロを介して Tera Term に接続するツールで、LogMeTT の「接続先を選んで起動する」役割を置き換えられます。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "TeraTerm Menu との違いは何ですか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "TeraTerm Menu は Tera Term に同梱される接続先ランチャーです。TTP は接続先の管理に加えて、認証情報を AES-256 で暗号化して保持し、マクロファイルには認証情報を書き出さず、接続ログを自動取得します。設定はレジストリではなくアプリのフォルダ内に保存するため、ポータブルに扱えます。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "パスワードはどこに保存されますか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ttp フォルダ内の ttp_data に、マスターパスワードから導出した鍵で暗号化して保存します。暗号化は AES-256 (Fernet)、鍵導出は PBKDF2 の 480,000 回反復です。マスターパスワード自体は保存せず、検証用のトークンのみを保持します。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "接続先ごとにマクロファイルを作る必要がありますか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "いいえ。TTP は接続先ごとに .ttl を生成しません。同梱の connect.ttl 1本に接続情報を環境変数で渡して起動します。接続先が増えてもマクロファイルは増えないため、どれが現役のマクロか分からなくなることがありません。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "AWS CLI は必要ですか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AWS から接続する機能（SSM / ECS Exec）を使う場合、必要なのは Session Manager プラグインだけです。AWS CLI v2 は不要です（インストール済みの場合はフォールバックとして使われます）。Tera Term マクロによる SSH 接続だけを使う場合は、AWS 関連の設定は一切不要です。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "RLogin とどちらを使うべきですか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "タブ管理や画面分割、SFTP までターミナル内で完結させたい場合は RLogin が向いています。Tera Term のマクロやシリアル接続をそのまま使い続けたい場合は、ターミナルを乗り換えずに接続管理だけを整える TTP が向いています。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "初回起動時に「Windows によって PC が保護されました」と表示されます。大丈夫ですか？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "コード署名証明書を使っていないため表示されます。「詳細情報」→「実行」で起動でき、2回目以降は表示されません。TTP は毎月1日に GitHub Actions で依存を最新化し、スモークチェックと pip-audit による脆弱性検査を通したうえで新しい版を自動リリースしています。検査に落ちた場合はリリースされません。配布物は GitHub Releases からのみ提供しています。"
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へ移動</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/">
+      <img src="/favicon.svg" alt="" width="24" height="24">
+      <span class="brand-text">TTP<small>Tera Term Pilot</small></span>
+    </a>
+    <nav class="nav" aria-label="サイト内メニュー">
+      <a href="/guide/macro/">できること</a>
+      <a href="/guide/no-plaintext/">パスワード</a>
+      <a href="/compare/teraterm-menu/">比較</a>
+      <a href="/aws/ssm/">AWS</a>
+      <a href="/security/">セキュリティ</a>
+      <a class="btn btn-sm" href="https://github.com/okamoto53515606/ttp/releases/latest">ダウンロード</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Windows 11 ／ MIT ライセンス ／ 非公式ツール</span>
+    <h1>Tera Term の接続管理を、<span>属人化させない。</span></h1>
+    <p class="lead">
+      認証情報を、ファイルに残さない。<br>
+      接続先は GUI の一覧から選ぶだけ。マクロは 1 本を全員で共有します。
+    </p>
+    <div class="hero-actions">
+      <a class="btn" href="https://github.com/okamoto53515606/ttp/releases/latest">最新版をダウンロード</a>
+      <a class="btn btn-ghost" href="/guide/macro/">できることを見る</a>
+    </div>
+    <p class="hero-note">zip を解凍するだけ／インストール不要／レジストリ不使用／Tera Term 4・5 対応</p>
+
+    <ul class="kv">
+      <li>
+        <strong>マクロは 1 本</strong>
+        <span>接続先ごとに .ttl を作らない。共有するのは connect.ttl だけ。</span>
+      </li>
+      <li>
+        <strong>AES-256 で暗号化</strong>
+        <span>パスワード・鍵・AWS キーは、マスターパスワード由来の鍵で保護。</span>
+      </li>
+      <li>
+        <strong>ログは自動</strong>
+        <span>接続のたびにタイムスタンプ付きログを生成。取り忘れがない。</span>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>いま、こんな運用になっていませんか</h2>
+    <div class="grid grid-3">
+      <div class="card">
+        <span class="num">01</span>
+        <h3>共有フォルダの .ttl が、認証情報の山になっている</h3>
+        <p>マクロの書き方として紹介されるサンプルは、ほぼすべて <code>PASSWORD = '...'</code> の平文です。接続先が増えるほど、パスワードが書かれたファイルが増えていきます。</p>
+      </div>
+      <div class="card">
+        <span class="num">02</span>
+        <h3>マクロを書ける人が、一人しかいない</h3>
+        <p>接続先を足すたびに、その人へ依頼する。異動や退職で、誰も触れなくなる。手順書もマクロも、属人化したまま残ります。</p>
+      </div>
+      <div class="card">
+        <span class="num">03</span>
+        <h3>誰がいつ入ったか、説明できない</h3>
+        <p>「ログを取っておいて」と決めても、実際には取り忘れる。監査や障害対応のときに、作業履歴が出てきません。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-soft">
+  <div class="wrap">
+    <h2>TTP がやること</h2>
+    <p class="lead">接続先の管理と、認証情報の扱いを分離します。マクロを書く人がいなくても、全員が同じ手順で接続できる状態をつくります。</p>
+
+    <div class="ba">
+      <div class="panel">
+        <div class="panel-head">
+          <span class="tag tag-ng">よくある形</span>
+          接続先ごとの .ttl
+        </div>
+<pre><code><span class="c">; 自動ログインサンプル.ttl</span>
+HOSTADDR = '192.168.1.10'
+USERNAME = 'admin'
+PASSWORD = <span class="bad">'P@ssw0rd'</span>   <span class="c">← 平文で残る</span>
+
+COMMAND = HOSTADDR
+strconcat COMMAND ':22 /ssh /2 /auth=password'
+strconcat COMMAND ' /user='
+strconcat COMMAND USERNAME
+strconcat COMMAND ' /passwd='
+strconcat COMMAND PASSWORD
+connect COMMAND</code></pre>
+        <div class="panel-foot">
+          接続先が 20 あれば、パスワード入りの .ttl が 20 個。
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="tag tag-ok">TTP</span>
+          connect.ttl 1 本
+        </div>
+<pre><code><span class="c">; connect.ttl （全接続先で共通）</span>
+getenv 'TT_TTL_HOST'   myhost
+getenv 'TT_TTL_PORT'   myport
+getenv 'TT_TTL_USER'   myuser
+getenv 'TT_TTL_PASSWD' mypasswd   <span class="good">← 実行時だけ</span>
+
+myconnectparam = ''
+strconcat myconnectparam myhost
+strconcat myconnectparam ':'
+strconcat myconnectparam myport
+strconcat myconnectparam ' /ssh /2 /auth=password'
+strconcat myconnectparam ' /user='
+strconcat myconnectparam myuser
+strconcat myconnectparam ' /passwd='
+strconcat myconnectparam mypasswd
+connect myconnectparam</code></pre>
+        <div class="panel-foot">
+          接続先が 20 でも、マクロは 1 本。認証情報はファイルに残りません。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>できること</h2>
+    <div class="grid grid-3">
+      <div class="card">
+        <span class="num">01</span>
+        <h3>接続先は一覧で管理</h3>
+        <p>名前・ホスト・ポート・認証方式・ユーザを一覧表示。列で並べ替え、複製、削除ができます。選んでダブルクリックすれば接続します。</p>
+      </div>
+      <div class="card">
+        <span class="num">02</span>
+        <h3>マクロは 1 本を共有</h3>
+        <p>同梱の <code>connect.ttl</code> に接続情報を環境変数で渡します。接続先が増えても .ttl は増えません。</p>
+      </div>
+      <div class="card">
+        <span class="num">03</span>
+        <h3>認証情報は暗号化して保持</h3>
+        <p>AES-256 (Fernet) で暗号化。鍵導出は PBKDF2 の 480,000 回反復。マスターパスワード自体は保存しません。</p>
+      </div>
+      <div class="card">
+        <span class="num">04</span>
+        <h3>マクロに認証情報を書かない</h3>
+        <p>パスワードは子プロセスの環境変数として渡します。共有フォルダに .ttl が置かれていても、そこにパスワードはありません。</p>
+      </div>
+      <div class="card">
+        <span class="num">05</span>
+        <h3>ログは自動で残る</h3>
+        <p>接続のたびに <code>日時_接続名.log</code> を生成し、そのまま記録を開始します。保存先は設定で変更できます。</p>
+      </div>
+      <div class="card">
+        <span class="num">06</span>
+        <h3>ポータブル</h3>
+        <p>zip を解凍するだけ。レジストリも AppData も使いません。アンインストールはフォルダを削除するだけです。</p>
+      </div>
+    </div>
+    <p class="table-note">
+      このほか、踏み台を経由する多段接続、鍵ファイルの暗号化保存、ttpmacro.exe の自動検出（Tera Term 4 / 5）に対応しています。
+    </p>
+  </div>
+</section>
+
+<section class="section-soft">
+  <div class="wrap">
+    <h2>画面</h2>
+    <div class="figures">
+      <figure>
+        <img src="/assets/screenshots/TTPList.png" alt="TTP の接続先一覧画面。名前・ホスト・ポート・認証・ユーザの列で接続先が並んでいる。" loading="lazy" width="960" height="600">
+        <figcaption>接続先一覧。選んでダブルクリックすると接続します。</figcaption>
+      </figure>
+      <figure>
+        <img src="/assets/screenshots/TTPConnectionSetting.png" alt="接続先の登録画面。ホスト名、ポート、認証方式、ユーザ名、パスワードを入力する。" loading="lazy" width="960" height="600">
+        <figcaption>接続先の登録。パスワードは暗号化して保存されます。</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>ほかのツールとの違い</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>Tera Term の接続管理に関わるツールとの比較（2026年11月時点）</caption>
+        <thead>
+          <tr>
+            <th scope="col">項目</th>
+            <th scope="col">TTP</th>
+            <th scope="col">TeraTerm Menu</th>
+            <th scope="col">LogMeTT</th>
+            <th scope="col">RLogin</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">接続先を一覧で管理</th>
+            <td class="mark m-ok">○</td>
+            <td class="mark m-ok">○</td>
+            <td class="mark m-ok">○</td>
+            <td class="mark m-ok">○</td>
+          </tr>
+          <tr>
+            <th scope="row">Tera Term マクロで接続</th>
+            <td class="mark m-ok">○</td>
+            <td class="mark m-ok">○</td>
+            <td class="mark m-ok">○</td>
+            <td class="mark m-na">—</td>
+          </tr>
+          <tr>
+            <th scope="row">接続先ごとに .ttl を作らない</th>
+            <td class="mark m-ok">○</td>
+            <td class="mark m-na">—</td>
+            <td class="mark m-na">—</td>
+            <td class="mark m-na">—</td>
+          </tr>
+          <tr>
+            <th scope="row">認証情報の暗号化保存</th>
+            <td class="mark m-ok">○<br><small>AES-256</small></td>
+            <td class="mark m-na">公式情報に記載なし</td>
+            <td class="mark m-na">—</td>
+            <td class="mark m-na">公式FAQで「保存しないでください」と案内</td>
+          </tr>
+          <tr>
+            <th scope="row">接続ログの自動取得</th>
+            <td class="mark m-ok">○</td>
+            <td class="mark m-ng">×</td>
+            <td class="mark m-ng">×</td>
+            <td class="mark m-half">設定で可</td>
+          </tr>
+          <tr>
+            <th scope="row">ポータブル（レジストリ不使用）</th>
+            <td class="mark m-ok">○</td>
+            <td class="mark m-half">△</td>
+            <td class="mark m-ng">×</td>
+            <td class="mark m-half">△</td>
+          </tr>
+          <tr>
+            <th scope="row">AWS SSM / ECS Exec 接続</th>
+            <td class="mark m-ok">○</td>
+            <td class="mark m-ng">×</td>
+            <td class="mark m-ng">×</td>
+            <td class="mark m-ng">×</td>
+          </tr>
+          <tr>
+            <th scope="row">現在の提供状況</th>
+            <td class="mark m-ok">提供中</td>
+            <td class="mark m-ok">Tera Term に同梱</td>
+            <td class="mark m-na">Tera Term 5.0 で削除</td>
+            <td class="mark m-ok">提供中</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">
+      ※ 各ツールの仕様は公式ドキュメントの記載に基づきます。LogMeTT・TTLEditor は Tera Term 5.0（2023年10月）でインストーラから削除され、ソース非公開のため復活していません。
+      詳しくは <a href="/compare/teraterm-menu/">TeraTerm Menu との違い</a>、<a href="/compare/logmett/">LogMeTT からの移行</a>、<a href="/compare/rlogin/">RLogin との使い分け</a> をご覧ください。
+    </p>
+  </div>
+</section>
+
+<section class="section-soft">
+  <div class="wrap">
+    <h2>AWS から接続する（任意）</h2>
+    <p class="lead">
+      SSM / ECS Exec で「いま繋がる」EC2 と Fargate タスクだけを一覧表示し、そのままシェルに入れます。
+      SSH の鍵もインバウンドポートも不要です。
+    </p>
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>必要なのはプラグインだけ</h3>
+        <p>Session Manager プラグインのみ。AWS CLI v2 は不要です（インストール済みならフォールバックとして使われます）。</p>
+      </div>
+      <div class="card">
+        <h3>Tera Term とは独立した追加機能</h3>
+        <p>SSH の代わりに SSM / ECS Exec を使うため、Tera Term も sshd も不要です。使わない場合は設定もインストールも増えません。</p>
+      </div>
+    </div>
+    <p class="hero-actions">
+      <a class="btn btn-ghost" href="/aws/ssm/">SSM 接続の詳細</a>
+      <a class="btn btn-ghost" href="/aws/ecs-exec/">ECS Exec 接続の詳細</a>
+    </p>
+  </div>
+</section>
+
+<section class="section-soft">
+  <div class="wrap">
+    <h2>配布と更新について</h2>
+    <p class="lead">
+      コード署名はしていません。その代わり、依存の更新と脆弱性チェックを<strong>毎月自動</strong>で回し、その結果を GitHub に残しています。
+    </p>
+
+    <div class="figure-single">
+      <figure>
+        <img src="/assets/screenshots/windows_alert.png" alt="「Windows によって PC が保護されました」という SmartScreen の警告画面。「詳細情報」の位置が枠で示されている。" loading="lazy" width="663" height="612">
+        <figcaption>初回起動時の警告。「詳細情報」をクリックすると「実行」が表示されます。</figcaption>
+      </figure>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>初回だけ、警告が出ます</h3>
+        <p>「詳細情報」→「実行」で起動できます。2回目以降は表示されません。コード署名証明書を使っていないためで、動作に問題があるという意味ではありません。判断材料は<a href="/security/">配布と更新の方針</a>にまとめています。</p>
+      </div>
+      <div class="card">
+        <h3>毎月、自動で更新しています</h3>
+        <p>毎月1日 03:00 に GitHub Actions が依存を最新化し、スモークチェックと <code>pip-audit</code> による脆弱性検査を通したうえで、新しい版を自動リリースします。検査に落ちた場合はリリースされません。</p>
+      </div>
+    </div>
+    <p class="hero-actions">
+      <a class="btn btn-ghost" href="/security/">配布と更新の方針を読む</a>
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>導入</h2>
+    <ol class="steps">
+      <li>
+        <h3>zip を任意のフォルダに解凍</h3>
+        <p>デスクトップや <code>C:\Tools\ttp\</code> など、分かりやすい場所に置いてください。Program Files 配下は権限の問題が起きる場合があるため避けます。</p>
+      </li>
+      <li>
+        <h3><code>ttp.exe</code> を起動し、マスターパスワードを設定</h3>
+        <p>このパスワードが接続情報を暗号化する鍵になります。忘れると復号できないため、パスワード管理のルールに沿って保管してください。</p>
+      </li>
+      <li>
+        <h3>ttpmacro.exe を確認して、接続先を登録</h3>
+        <p>Tera Term 4 / 5 を自動検出します。接続先を登録したら、一覧から選んでダブルクリックで接続できます。</p>
+      </li>
+    </ol>
+
+    <div class="callout callout-warn">
+      <p>
+        <strong>初回起動時の SmartScreen について。</strong>
+        コード署名を付けていないため、「Windows によって PC が保護されました」と表示されることがあります。
+        「詳細情報」→「実行」で起動できます。2 回目以降は表示されません。
+        内容を確認したい場合は、<a href="https://github.com/okamoto53515606/ttp">GitHub のソース</a>から
+        <code>uv run python build.py</code> で自分でビルドできます。
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="section-soft">
+  <div class="wrap">
+    <h2>よくある質問</h2>
+    <div class="faq-list">
+      <details class="faq" open>
+        <summary>Tera Term 5 で LogMeTT が使えなくなりました。代わりになりますか？</summary>
+        <div class="answer">
+          <p>はい。Tera Term 5.0 で LogMeTT と TTLEditor はインストーラから削除され、これらはソース非公開のため復活していません。TTP は接続先を一覧で管理し、マクロを介して Tera Term に接続するツールで、LogMeTT の「接続先を選んで起動する」役割を置き換えられます。</p>
+          <p><a href="/compare/logmett/">LogMeTT からの移行</a>もご覧ください。</p>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>TeraTerm Menu との違いは何ですか？</summary>
+        <div class="answer">
+          <p>TeraTerm Menu は Tera Term に同梱される接続先ランチャーです。TTP は接続先の管理に加えて、認証情報を AES-256 で暗号化して保持し、マクロファイルには認証情報を書き出さず、接続ログを自動取得します。設定はレジストリではなくアプリのフォルダ内に保存するため、ポータブルに扱えます。</p>
+          <p><a href="/compare/teraterm-menu/">TeraTerm Menu との違い</a>に詳しくまとめています。</p>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>パスワードはどこに保存されますか？</summary>
+        <div class="answer">
+          <p>ttp フォルダ内の <code>ttp_data</code> に、マスターパスワードから導出した鍵で暗号化して保存します。暗号化は AES-256 (Fernet)、鍵導出は PBKDF2 の 480,000 回反復です。マスターパスワード自体は保存せず、検証用のトークンのみを保持します。</p>
+          <p><a href="/guide/no-plaintext/">パスワードをファイルに残さない方法</a>で、他の選択肢と比較しています。</p>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>接続先ごとにマクロファイルを作る必要がありますか？</summary>
+        <div class="answer">
+          <p>いいえ。TTP は接続先ごとに .ttl を生成しません。同梱の <code>connect.ttl</code> 1 本に接続情報を環境変数で渡して起動します。接続先が増えてもマクロファイルは増えないため、どれが現役のマクロか分からなくなることがありません。</p>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>AWS CLI は必要ですか？</summary>
+        <div class="answer">
+          <p>AWS から接続する機能（SSM / ECS Exec）を使う場合、必要なのは Session Manager プラグインだけです。AWS CLI v2 は不要です（インストール済みの場合はフォールバックとして使われます）。Tera Term マクロによる SSH 接続だけを使う場合は、AWS 関連の設定は一切不要です。</p>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>RLogin とどちらを使うべきですか？</summary>
+        <div class="answer">
+          <p>タブ管理や画面分割、SFTP までターミナル内で完結させたい場合は RLogin が向いています。Tera Term のマクロやシリアル接続をそのまま使い続けたい場合は、ターミナルを乗り換えずに接続管理だけを整える TTP が向いています。</p>
+          <p><a href="/compare/rlogin/">RLogin との使い分け</a>もご覧ください。</p>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>初回起動時に「Windows によって PC が保護されました」と表示されます。大丈夫ですか？</summary>
+        <div class="answer">
+          <p>コード署名証明書を使っていないため表示されます。「詳細情報」→「実行」で起動でき、2回目以降は表示されません。</p>
+          <p>TTP は毎月1日に GitHub Actions で依存を最新化し、スモークチェックと <code>pip-audit</code> による脆弱性検査を通したうえで、新しい版を自動リリースしています。検査に落ちた場合はリリースされません。配布物は GitHub Releases からのみ提供しています。</p>
+          <p><a href="/security/">配布と更新の方針</a>に、自動化している内容と自分で確認する方法をまとめています。</p>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<div class="cta">
+  <div class="wrap">
+    <h2>Tera Term は、そのままでいい。</h2>
+    <p class="lead">変えるのは接続の入口だけ。マクロは 1 本、パスワードは暗号化、ログは自動で残ります。</p>
+    <div class="cta-actions">
+      <a class="btn" href="https://github.com/okamoto53515606/ttp/releases/latest">最新版をダウンロード</a>
+      <a class="btn btn-ghost" href="https://github.com/okamoto53515606/ttp">GitHub で見る</a>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="disclaimer">
+      TTP (Tera Term Pilot) は個人が開発した非公式ツールです。TeraTerm Project、寺西高氏、および各社とは関係ありません。
+      「Tera Term」は TeraTerm Project が開発するソフトウェアの名称です。
+    </p>
+    <p class="footer-meta">
+      <a href="https://github.com/okamoto53515606/ttp">GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/okamoto53515606/ttp/releases">リリース</a>
+      <span aria-hidden="true">·</span>
+      <a href="/llms.txt">llms.txt</a>
+      <span aria-hidden="true">·</span>
+      <span>MIT License</span>
+      <span aria-hidden="true">·</span>
+      <span>© 2026 okamo</span>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

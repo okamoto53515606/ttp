@@ -1,0 +1,77 @@
+# TTP (Tera Term Pilot)
+
+> TTP は、Tera Term のマクロ (ttpmacro.exe) を GUI で管理・実行する Windows 向けデスクトップアプリケーションです。
+> 接続先は一覧で管理し、マクロは同梱の connect.ttl 1本を全接続先で共有します。
+> パスワード・秘密鍵・AWS アクセスキーはマスターパスワード由来の鍵で暗号化して保存し、マクロファイルには書き出しません。
+> 接続のたびにログファイルを自動生成します。zip を解凍するだけで使えるポータブル動作（レジストリ不使用）、MIT ライセンス。
+> 個人が開発した非公式ツールであり、TeraTerm Project および寺西高氏とは関係ありません。
+
+## 概要
+
+- 正式名称: TTP (Tera Term Pilot)
+- 種別: Windows デスクトップアプリケーション（Python / Tkinter、PyInstaller で exe 化）
+- 対応 OS: Windows 11
+- 前提: Tera Term 4 または 5（ttpmacro.exe）。AWS 接続機能を使う場合のみ Session Manager プラグイン
+- ライセンス: MIT（商用利用可）
+- 配布: GitHub Releases の zip
+- リポジトリ: https://github.com/okamoto53515606/ttp
+
+## 主な機能
+
+- 接続先を GUI の一覧で管理（名前・ホスト・ポート・認証方式・ユーザ、列で並べ替え）
+- 接続先ごとに .ttl を生成しない。connect.ttl 1本に環境変数で接続情報を渡す
+- 認証情報を AES-256 (Fernet) で暗号化保存。鍵導出は PBKDF2 480,000 回反復
+- マスターパスワード自体は保存せず、検証用トークンのみ保持
+- 接続ログを自動生成（日時_接続名.log）
+- 秘密鍵をアプリ内に暗号化保存。接続設定を削除すると鍵も削除
+- 踏み台を経由する多段接続（プロンプト待ちとコマンド送信で表現）
+- ttpmacro.exe の自動検出（Tera Term 4 / 5）
+- ポータブル動作（レジストリ・AppData 不使用、アンインストールはフォルダ削除）
+
+## AWS 接続（任意の追加機能）
+
+- SSM Session Manager で EC2 に接続（PingStatus が Online のものだけを一覧表示）
+- ECS Exec で Fargate タスクに接続（ExecuteCommandAgent が RUNNING のものだけを一覧表示）
+- クライアント側に必要なのは Session Manager プラグインのみ。AWS CLI v2 は不要
+- Tera Term を使わない独立した経路（sshd 不要、インバウンドポート不要）
+- IAM ユーザーに MFA を必須としている場合のみ、MFA コード入力に対応
+
+## 制限
+
+- 同梱の connect.ttl を起動する方式で、任意の自作 .ttl を指定して実行する機能はない
+- ログイン後の自動操作は「プロンプト待ち + コマンド1回送信」まで
+- コード署名を行っていないため、初回起動時に Microsoft Defender SmartScreen の警告が出る場合がある
+- 暗号化が守るのはディスク上のファイル。端末自体の侵害や、実行中メモリ上の値までは守らない
+
+## 主要ページ
+
+- [TTP (Tera Term Pilot)](https://ttpilot.okamomedia.tokyo/): 製品概要、比較、FAQ、ダウンロード
+- [Tera Term のマクロを1本にまとめる](https://ttpilot.okamomedia.tokyo/guide/macro/): 接続先ごとに .ttl を作らない運用と、渡している環境変数の一覧
+- [マクロにパスワードを書かない3つの方法](https://ttpilot.okamomedia.tokyo/guide/no-plaintext/): 平文・getpassword・TTP の比較。TTP が守れる範囲と守れない範囲
+- [TeraTerm Menu と TTP の違い](https://ttpilot.okamomedia.tokyo/compare/teraterm-menu/): 同梱ランチャーとの比較
+- [LogMeTT は Tera Term 5.0 で削除されました](https://ttpilot.okamomedia.tokyo/compare/logmett/): 削除の経緯と移行手順
+- [RLogin と TTP の使い分け](https://ttpilot.okamomedia.tokyo/compare/rlogin/): ターミナルを変えるか、入口だけ変えるか
+- [SSM で EC2 に接続する](https://ttpilot.okamomedia.tokyo/aws/ssm/): Session Manager の手順と最小 IAM 権限
+- [ECS Exec で Fargate タスクに入る](https://ttpilot.okamomedia.tokyo/aws/ecs-exec/): タスクロールを含む必要権限
+- [配布と更新の方針](https://ttpilot.okamomedia.tokyo/security/): コード署名をしていない理由、毎月の自動依存更新・pip-audit・自動リリースの仕組み、自分で確認する方法
+
+## 配布と更新
+
+- コード署名は行っていない。初回起動時に Microsoft Defender SmartScreen の警告が出る場合がある
+- 配布物は GitHub Releases の zip のみ（公式サイトはリンクのみで、ファイルは置いていない）
+- 毎月1日 03:00 JST に GitHub Actions が依存を最新化し、スモークチェックと pip-audit を実行する。検査に通った場合のみパッチバージョンを上げて自動リリースする
+- 依存に変更が無い月は何もリリースしない
+- main への push と Pull Request でも同じ検査を実行する
+- 同梱ランタイムは Python 3.14 系（ビルド時点の最新パッチ）
+
+## 背景となる事実
+
+- Tera Term 5.0（2023年10月15日）で LogMeTT、TTLEditor、Collector がインストーラから削除された。これらはソース非公開のため復活していない
+- TeraTerm Menu は削除されておらず、Tera Term 5.7.0 にも v1.24 が同梱されている
+- Tera Term のマクロには getpassword コマンドがあり、暗号化されたパスワードファイルから値を読み出せる
+- RLogin の公式マニュアル（FAQ）は、パスワードを保存しない運用を案内している
+
+## 関連
+
+- 作者: okamo（https://www.okamomedia.tokyo/）
+- 開発記録: https://www.okamomedia.tokyo/articles/tera-termttp-tera-term-pilotai

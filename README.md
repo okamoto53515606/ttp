@@ -3,6 +3,12 @@
 テラタームマクロをGUIで管理・実行するツールです。  
 接続情報は暗号化して保存されます。
 
+**[公式サイト](https://ttpilot.okamomedia.tokyo/)** — 機能の説明、他のツールとの比較、よくある質問
+
+> TTP (Tera Term Pilot) は個人が開発した非公式ツールです。TeraTerm Project、
+> 寺西高氏、および各社とは関係ありません。「Tera Term」は TeraTerm Project が
+> 開発するソフトウェアの名称です。
+
 ## 特徴
 
 - **ワンクリック接続**: 接続先を選んでクリックするだけ
@@ -27,7 +33,16 @@ AWS 接続は **Tera Term を使わない独立した追加機能** です（SSH
 
 ## ドキュメント
 
+- **[公式サイト](https://ttpilot.okamomedia.tokyo/)** — 概要・比較・よくある質問
 - **[使い方マニュアル](docs/manual.md)** — インストール・セットアップ・各画面の操作方法
+
+### サイトの構成
+
+| ページ | 内容 |
+|---|---|
+| [`lp/`](lp/) | 公式サイトのソース（静的HTML。JavaScript なし） |
+| [`infra/lp-stack.yaml`](infra/lp-stack.yaml) | 配信基盤（S3 + CloudFront）の CloudFormation |
+| [`infra/README.md`](infra/README.md) | セットアップ手順とセキュリティヘッダーの内容 |
 
 ## 動作要件
 

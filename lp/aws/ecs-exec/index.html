@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ECS Exec で Fargate タスクに入る — GUI から ECS Exec (TTP)</title>
+<meta name="description" content="ECS Exec が有効で ExecuteCommandAgent が RUNNING の Fargate タスクだけを一覧表示し、そのままシェルに入ります。必要なタスクロールの権限と IAM ポリシーをまとめます。">
+<link rel="canonical" href="https://ttpilot.okamomedia.tokyo/aws/ecs-exec/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b6b7a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TTP (Tera Term Pilot)">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="ECS Exec で Fargate タスクに入る">
+<meta property="og:description" content="実行中のタスクを一覧から選んで、そのままシェルに入ります。">
+<meta property="og:url" content="https://ttpilot.okamomedia.tokyo/aws/ecs-exec/">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://ttpilot.okamomedia.tokyo/aws/ecs-exec/#article",
+      "headline": "ECS Exec で Fargate タスクに入る",
+      "description": "ECS Exec が有効な Fargate タスクを一覧表示し、シェルに入る手順と必要な権限をまとめる。",
+      "inLanguage": "ja",
+      "datePublished": "2026-11-14",
+      "dateModified": "2026-11-14",
+      "author": { "@type": "Person", "name": "okamo", "url": "https://www.okamomedia.tokyo/" },
+      "publisher": { "@type": "Organization", "name": "okamomedia" },
+      "mainEntityOfPage": "https://ttpilot.okamomedia.tokyo/aws/ecs-exec/",
+      "about": { "@id": "https://ttpilot.okamomedia.tokyo/#app" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "TTP", "item": "https://ttpilot.okamomedia.tokyo/" },
+        { "@type": "ListItem", "position": 2, "name": "ECS Exec で Fargate タスクに入る", "item": "https://ttpilot.okamomedia.tokyo/aws/ecs-exec/" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へ移動</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/">
+      <img src="/favicon.svg" alt="" width="24" height="24">
+      <span class="brand-text">TTP<small>Tera Term Pilot</small></span>
+    </a>
+    <nav class="nav" aria-label="サイト内メニュー">
+      <a href="/guide/macro/">できること</a>
+      <a href="/guide/no-plaintext/">パスワード</a>
+      <a href="/compare/teraterm-menu/">比較</a>
+      <a href="/aws/ssm/">AWS</a>
+      <a href="/security/">セキュリティ</a>
+      <a class="btn btn-sm" href="https://github.com/okamoto53515606/ttp/releases/latest">ダウンロード</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+  <nav class="crumbs" aria-label="パンくず">
+    <ol>
+      <li><a href="/">TTP</a></li>
+      <li>ECS Exec で Fargate タスクに入る</li>
+    </ol>
+  </nav>
+</div>
+
+<article class="article">
+  <div class="wrap">
+    <h1>ECS Exec で Fargate タスクに入る</h1>
+    <p class="lead">
+      Fargate のタスクにシェルで入りたいとき、ECS Exec を使うと踏み台も SSH も要りません。
+      TTP は <strong>ECS Exec が有効で、エージェントが動いているタスクだけ</strong>を一覧に出すので、
+      クラスタ名やタスク ID をコンソールで探さずに済みます。
+    </p>
+
+    <div class="callout">
+      <p><strong>Tera Term とは独立した機能です。</strong> ECS Exec は SSM の仕組みを使うため、Tera Term も sshd も不要です。使わない場合、追加のインストールも設定も発生しません。</p>
+    </div>
+
+    <h2>必要なもの</h2>
+    <ol class="steps">
+      <li>
+        <h3>Session Manager プラグイン（クライアント側）</h3>
+        <p>EC2 の SSM 接続と同じく、クライアントに必要なのはこれだけです。AWS CLI v2 は不要です。導入後は TTP を再起動してください。</p>
+      </li>
+      <li>
+        <h3><code>enableExecuteCommand</code> を有効にしたタスク</h3>
+        <p>サービスまたは <code>run-task</code> の実行時に <code>enableExecuteCommand</code> を有効にします。<strong>起動済みのタスクには後から有効化できない</strong>ため、設定変更後はタスクを入れ替える必要があります。</p>
+      </li>
+      <li>
+        <h3>タスクロールに <code>ssmmessages</code> の権限</h3>
+        <p>タスク側にも権限が要ります。ここが抜けていると、一覧には出るのに接続できない、という状態になります。</p>
+      </li>
+      <li>
+        <h3>コンテナ内にシェルがあること</h3>
+        <p><code>/bin/sh</code> が存在しないイメージ（distroless など）では、ECS Exec 自体が使えません。</p>
+      </li>
+    </ol>
+
+    <h2>一覧に出る条件</h2>
+    <p>TTP は <code>ecs:DescribeTasks</code> の結果から、<strong><code>ExecuteCommandAgent</code> が <code>RUNNING</code> のタスクだけ</strong>を表示します。エージェントが STOPPED のタスクや、Exec を有効にしていないタスクは一覧に出ません。</p>
+
+    <h2>手順</h2>
+    <ol class="steps">
+      <li>
+        <h3>「AWS 設定...」で認証情報とリージョンを入力</h3>
+        <p>「接続テスト」で疎通を確認します。MFA を必須にしている IAM ユーザーのみ「MFA を使用する」を有効にします。</p>
+      </li>
+      <li>
+        <h3>「AWS から接続...」（Ctrl+Shift+A）を開く</h3>
+        <p>EC2 インスタンスと ECS タスクが同じ一覧に表示されます。</p>
+      </li>
+      <li>
+        <h3>タスクを選んでダブルクリック</h3>
+        <p>コンテナ内のシェルが開きます。タスクに複数コンテナがある場合は、対象のコンテナが選ばれます。</p>
+      </li>
+    </ol>
+
+    <h2>必要な IAM 権限</h2>
+    <h3>操作する側（IAM ユーザー）</h3>
+<pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecs:ListClusters",
+        "ecs:ListTasks",
+        "ecs:DescribeTasks",
+        "ecs:ExecuteCommand",
+        "ssm:StartSession",
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel"
+      ],
+      "Resource": "*"
+    }
+  ]
+}</code></pre>
+
+    <h3>タスク側（タスクロール）</h3>
+<pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel"
+      ],
+      "Resource": "*"
+    }
+  ]
+}</code></pre>
+    <p class="table-note">セッションを KMS で暗号化する設定にしている場合は、操作する側とタスク側の両方に <code>kms:Decrypt</code> などの権限が必要になります。</p>
+
+    <h2>うまくいかないとき</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">症状</th><th scope="col">確認すること</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">一覧にタスクが出ない</th><td>リージョン、<code>enableExecuteCommand</code> の有効化、<code>ExecuteCommandAgent</code> の状態（RUNNING か）。</td></tr>
+          <tr><th scope="row">Exec を有効にしたのに反映されない</th><td>起動済みタスクには後から有効化できません。タスクを入れ替えてください。</td></tr>
+          <tr><th scope="row">接続時にエラーになる</th><td>タスクロールの <code>ssmmessages:*</code>。ここが最も見落とされます。</td></tr>
+          <tr><th scope="row">シェルが起動しない</th><td>イメージに <code>/bin/sh</code> が含まれているか。</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>注意事項</h2>
+    <ul>
+      <li>ECS Exec は万能の踏み台ではありません。タスクが停止するとセッションも切れます</li>
+      <li>実行したコマンドの監査ログを残したい場合は、ECS Exec のセッションログ（S3 / CloudWatch Logs）を別途有効にしてください。TTP はその設定を行いません</li>
+      <li>AWS のアクセスキーは <code>ttp_data/aws.enc</code> に暗号化して保存されます</li>
+    </ul>
+
+    <div class="next-links">
+      <a href="/aws/ssm/">
+        <span>AWS</span>
+        <strong>SSM で EC2 に接続する</strong>
+      </a>
+      <a href="/guide/no-plaintext/">
+        <span>パスワード</span>
+        <strong>マクロにパスワードを書かない3つの方法</strong>
+      </a>
+    </div>
+
+    <p class="updated">最終更新: 2026年11月14日</p>
+  </div>
+</article>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="disclaimer">
+      TTP (Tera Term Pilot) は個人が開発した非公式ツールです。TeraTerm Project、寺西高氏、および各社とは関係ありません。
+      「Tera Term」は TeraTerm Project が開発するソフトウェアの名称です。
+    </p>
+    <p class="footer-meta">
+      <a href="https://github.com/okamoto53515606/ttp">GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/okamoto53515606/ttp/releases">リリース</a>
+      <span aria-hidden="true">·</span>
+      <a href="/llms.txt">llms.txt</a>
+      <span aria-hidden="true">·</span>
+      <span>MIT License</span>
+      <span aria-hidden="true">·</span>
+      <span>© 2026 okamo</span>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

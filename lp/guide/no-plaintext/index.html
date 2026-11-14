@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tera Term のマクロにパスワードを書かない3つの方法 — TTP (Tera Term Pilot)</title>
+<meta name="description" content="Tera Term マクロでパスワードを扱う方法を3つ比較します。マクロに平文で書く方法、getpassword でパスワードファイルから読む方法、TTP で暗号化ストアから環境変数として渡す方法。">
+<link rel="canonical" href="https://ttpilot.okamomedia.tokyo/guide/no-plaintext/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b6b7a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TTP (Tera Term Pilot)">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="Tera Term のマクロにパスワードを書かない3つの方法">
+<meta property="og:description" content="平文で書く／getpassword を使う／TTP で外に出す。3つの方法を、守れる範囲と守れない範囲まで含めて比較します。">
+<meta property="og:url" content="https://ttpilot.okamomedia.tokyo/guide/no-plaintext/">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://ttpilot.okamomedia.tokyo/guide/no-plaintext/#article",
+      "headline": "Tera Term のマクロにパスワードを書かない3つの方法",
+      "description": "Tera Term マクロでパスワードを扱う3つの方法（平文・getpassword・TTP）を、守れる範囲と守れない範囲まで含めて比較する。",
+      "inLanguage": "ja",
+      "datePublished": "2026-11-14",
+      "dateModified": "2026-11-14",
+      "author": { "@type": "Person", "name": "okamo", "url": "https://www.okamomedia.tokyo/" },
+      "publisher": { "@type": "Organization", "name": "okamomedia" },
+      "mainEntityOfPage": "https://ttpilot.okamomedia.tokyo/guide/no-plaintext/",
+      "about": { "@id": "https://ttpilot.okamomedia.tokyo/#app" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "TTP", "item": "https://ttpilot.okamomedia.tokyo/" },
+        { "@type": "ListItem", "position": 2, "name": "マクロにパスワードを書かない3つの方法", "item": "https://ttpilot.okamomedia.tokyo/guide/no-plaintext/" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へ移動</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/">
+      <img src="/favicon.svg" alt="" width="24" height="24">
+      <span class="brand-text">TTP<small>Tera Term Pilot</small></span>
+    </a>
+    <nav class="nav" aria-label="サイト内メニュー">
+      <a href="/guide/macro/">できること</a>
+      <a href="/guide/no-plaintext/">パスワード</a>
+      <a href="/compare/teraterm-menu/">比較</a>
+      <a href="/aws/ssm/">AWS</a>
+      <a href="/security/">セキュリティ</a>
+      <a class="btn btn-sm" href="https://github.com/okamoto53515606/ttp/releases/latest">ダウンロード</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+  <nav class="crumbs" aria-label="パンくず">
+    <ol>
+      <li><a href="/">TTP</a></li>
+      <li>マクロにパスワードを書かない3つの方法</li>
+    </ol>
+  </nav>
+</div>
+
+<article class="article">
+  <div class="wrap">
+    <h1>Tera Term のマクロに、パスワードを書かない3つの方法</h1>
+    <p class="lead">
+      「Tera Term マクロ 自動ログイン」で調べると、上位の解説はほぼすべて
+      <code>PASSWORD = '...'</code> をマクロに直接書く形を紹介しています。
+      手元の検証なら問題ありませんが、運用に乗せると認証情報がファイルとして残ります。
+      ここでは現実的な3つの方法を、<strong>守れる範囲と守れない範囲</strong>まで含めて並べます。
+    </p>
+
+    <h2>なぜ平文が問題になるのか</h2>
+    <p>マクロに書いたパスワードは、そのままディスク上のファイルの中身になります。次のような経路で、意図しない場所に残ります。</p>
+    <ul>
+      <li>共有フォルダに置いた <code>.ttl</code> が、そのまま部署内に配られる</li>
+      <li>ファイルサーバや端末のバックアップ、世代管理の中に残り続ける</li>
+      <li>個人の Git リポジトリや、チャットの添付に混ざる</li>
+      <li>担当者が退職しても、パスワード入りのファイルだけが残る</li>
+    </ul>
+    <p>パスワード変更のたびに全ファイルを直す必要があることも、結果として「変更しない運用」を生みます。</p>
+
+    <h2>方法1: マクロに平文で書く</h2>
+    <p>いちばんよく紹介されている形です。追加のツールも設定も要りません。</p>
+<pre><code>HOSTADDR = '192.168.1.10'
+USERNAME = 'admin'
+PASSWORD = 'P@ssw0rd'      ; 平文でディスクに残る
+
+COMMAND = HOSTADDR
+strconcat COMMAND ':22 /ssh /2 /auth=password /user='
+strconcat COMMAND USERNAME
+strconcat COMMAND ' /passwd='
+strconcat COMMAND PASSWORD
+connect COMMAND</code></pre>
+    <p><strong>向いている場面</strong>: 一時的な検証、使い捨ての検証環境。それ以外では、認証情報の置き場所として適切ではありません。</p>
+
+    <h2>方法2: getpassword でパスワードファイルから読む</h2>
+    <p>Tera Term のマクロには、暗号化されたパスワードファイルから値を取り出す <code>getpassword</code> コマンドがあります。公式マニュアルには次のように記載されています。</p>
+    <blockquote>
+      パスワードファイル <code>&lt;filename&gt;</code> から <code>&lt;password name&gt;</code> で指定されるパスワードを読みだす。そのパスワードは暗号化されているので、それを解読してから文字列変数 <code>&lt;strvar&gt;</code> に保存する。
+      <!-- 出典: Tera Term MACRO Help / getpassword -->
+    </blockquote>
+<pre><code>getpassword 'password.dat' 'server-a' password
+
+COMMAND = '192.168.1.10:22 /ssh /2 /auth=password /user=admin'
+strconcat COMMAND ' /passwd='
+strconcat COMMAND password
+connect COMMAND</code></pre>
+    <p>1つのパスワードファイルに複数のパスワードを入れ、識別子で使い分けられます。</p>
+    <p><strong>向いている場面</strong>: 追加のツールを入れたくないが、マクロに平文は書きたくない場合。</p>
+    <p><strong>残る手間</strong>: マクロごとに <code>getpassword</code> を書く必要があり、接続先とパスワード識別子の対応は人が管理します。パスワードファイル自体の配布・バックアップ・権限も、別途考える必要があります。自動ログの開始も、マクロ側に <code>logopen</code> を書く必要があります。</p>
+
+    <h2>方法3: TTP でマクロの外に出す</h2>
+    <p>TTP は、接続情報をアプリ側の暗号化ストアに持ち、マクロには環境変数として渡します。マクロファイルの中に認証情報を書きません。</p>
+    <ul>
+      <li>保存時: AES-256 (Fernet) で暗号化。鍵はマスターパスワードから PBKDF2（480,000回反復）で導出</li>
+      <li>実行時: 子プロセスの環境変数 <code>TT_TTL_PASSWD</code> として渡す</li>
+      <li>マクロ: 同梱の <code>connect.ttl</code> 1本を全接続先で共有</li>
+      <li>ログ: 接続のたびに自動生成し、そのまま記録開始</li>
+      <li>マスターパスワード自体は保存せず、検証用トークンのみを保持</li>
+    </ul>
+    <p><strong>向いている場面</strong>: 接続先が多い、担当者が複数いる、共有フォルダにマクロを置いている、作業ログを確実に残したい。</p>
+
+    <h2>3つの方法の比較</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>マクロからパスワードを渡す方法の比較</caption>
+        <thead>
+          <tr>
+            <th scope="col">項目</th>
+            <th scope="col">平文</th>
+            <th scope="col">getpassword</th>
+            <th scope="col">TTP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">マクロファイルに秘密が残る</th><td class="mark m-ng">残る</td><td class="mark m-ok">残らない</td><td class="mark m-ok">残らない</td></tr>
+          <tr><th scope="row">追加のインストール</th><td class="mark m-ok">不要</td><td class="mark m-ok">不要</td><td class="mark m-half">必要</td></tr>
+          <tr><th scope="row">マスターパスワード</th><td class="mark m-na">—</td><td class="mark m-na">—</td><td class="mark m-half">必要</td></tr>
+          <tr><th scope="row">接続先の一覧管理</th><td class="mark m-ng">×</td><td class="mark m-ng">×</td><td class="mark m-ok">○</td></tr>
+          <tr><th scope="row">接続先ごとにマクロを作る</th><td class="mark m-ng">必要</td><td class="mark m-ng">必要</td><td class="mark m-ok">不要</td></tr>
+          <tr><th scope="row">ログの自動取得</th><td class="mark m-ng">×</td><td class="mark m-half">自前で記述</td><td class="mark m-ok">○</td></tr>
+          <tr><th scope="row">ポータブル（レジストリ不使用）</th><td class="mark m-ok">○</td><td class="mark m-ok">○</td><td class="mark m-ok">○</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>TTP が守る範囲と、守らない範囲</h2>
+    <p>暗号化ツールの説明では、できることだけを書くと誤解を生みます。TTP について、実際に守れるのは次の範囲です。</p>
+
+    <h3>守れること</h3>
+    <ul>
+      <li>ディスク上の設定ファイルに、パスワードの平文が残らない</li>
+      <li>共有フォルダや配布用 zip に <code>.ttl</code> が置かれても、そこからパスワードは取れない</li>
+      <li>マスターパスワードを知らない第三者は、暗号化ストアを復号できない</li>
+      <li>マスターパスワードは保存されないため、ストアだけをコピーしても復号できない</li>
+    </ul>
+
+    <h3>守れないこと</h3>
+    <ul>
+      <li>端末にログインでき、マスターパスワードも知っている人の操作</li>
+      <li>TTP の実行中、マクロへ渡すためにメモリ上に存在するパスワード</li>
+      <li>画面の覗き見、キーロガー、マルウェアなどの端末側の侵害</li>
+    </ul>
+    <p>つまり TTP が解くのは「<strong>認証情報がファイルとして配られ、残り続ける</strong>」問題です。端末そのものの侵害への対策は、端末管理や EDR 側の責務になります。</p>
+
+    <h2>まとめ</h2>
+    <ul>
+      <li>追加ツールを入れたくない → <code>getpassword</code> で、少なくとも平文はやめる</li>
+      <li>接続先が多く、担当者が複数いて、ログも残したい → TTP</li>
+      <li>どちらも、マクロに <code>PASSWORD = '...'</code> を書くより安全です</li>
+    </ul>
+
+    <div class="next-links">
+      <a href="/guide/macro/">
+        <span>運用</span>
+        <strong>Tera Term のマクロを1本にまとめる</strong>
+      </a>
+      <a href="/compare/teraterm-menu/">
+        <span>比較</span>
+        <strong>TeraTerm Menu と TTP の違い</strong>
+      </a>
+    </div>
+
+    <p class="updated">最終更新: 2026年11月14日 / 引用元: Tera Term MACRO Help（getpassword）</p>
+  </div>
+</article>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="disclaimer">
+      TTP (Tera Term Pilot) は個人が開発した非公式ツールです。TeraTerm Project、寺西高氏、および各社とは関係ありません。
+      「Tera Term」は TeraTerm Project が開発するソフトウェアの名称です。
+    </p>
+    <p class="footer-meta">
+      <a href="https://github.com/okamoto53515606/ttp">GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/okamoto53515606/ttp/releases">リリース</a>
+      <span aria-hidden="true">·</span>
+      <a href="/llms.txt">llms.txt</a>
+      <span aria-hidden="true">·</span>
+      <span>MIT License</span>
+      <span aria-hidden="true">·</span>
+      <span>© 2026 okamo</span>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

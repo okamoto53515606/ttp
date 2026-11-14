@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RLogin と TTP の使い分け — ターミナルを変えるか、入口だけ変えるか</title>
+<meta name="description" content="RLogin はターミナル本体を置き換える選択肢、TTP は Tera Term を残したまま接続管理だけを整える選択肢です。機能と移行コストを比較して、使い分けの判断基準をまとめます。">
+<link rel="canonical" href="https://ttpilot.okamomedia.tokyo/compare/rlogin/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b6b7a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TTP (Tera Term Pilot)">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="RLogin と TTP の使い分け">
+<meta property="og:description" content="ターミナル本体を変えるか、Tera Term を残して接続管理だけ変えるか。">
+<meta property="og:url" content="https://ttpilot.okamomedia.tokyo/compare/rlogin/">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://ttpilot.okamomedia.tokyo/compare/rlogin/#article",
+      "headline": "RLogin と TTP の使い分け",
+      "description": "RLogin と TTP の機能・移行コストを比較し、使い分けの判断基準をまとめる。",
+      "inLanguage": "ja",
+      "datePublished": "2026-11-14",
+      "dateModified": "2026-11-14",
+      "author": { "@type": "Person", "name": "okamo", "url": "https://www.okamomedia.tokyo/" },
+      "publisher": { "@type": "Organization", "name": "okamomedia" },
+      "mainEntityOfPage": "https://ttpilot.okamomedia.tokyo/compare/rlogin/",
+      "about": { "@id": "https://ttpilot.okamomedia.tokyo/#app" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "TTP", "item": "https://ttpilot.okamomedia.tokyo/" },
+        { "@type": "ListItem", "position": 2, "name": "RLogin との使い分け", "item": "https://ttpilot.okamomedia.tokyo/compare/rlogin/" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へ移動</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/">
+      <img src="/favicon.svg" alt="" width="24" height="24">
+      <span class="brand-text">TTP<small>Tera Term Pilot</small></span>
+    </a>
+    <nav class="nav" aria-label="サイト内メニュー">
+      <a href="/guide/macro/">できること</a>
+      <a href="/guide/no-plaintext/">パスワード</a>
+      <a href="/compare/teraterm-menu/">比較</a>
+      <a href="/aws/ssm/">AWS</a>
+      <a href="/security/">セキュリティ</a>
+      <a class="btn btn-sm" href="https://github.com/okamoto53515606/ttp/releases/latest">ダウンロード</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+  <nav class="crumbs" aria-label="パンくず">
+    <ol>
+      <li><a href="/">TTP</a></li>
+      <li>RLogin との使い分け</li>
+    </ol>
+  </nav>
+</div>
+
+<article class="article">
+  <div class="wrap">
+    <h1>RLogin と TTP は、競合しません</h1>
+    <p class="lead">
+      接続先の管理に不満があるとき、選択肢は2つに分かれます。
+      <strong>ターミナル本体を RLogin に置き換える</strong>か、
+      <strong>Tera Term を残したまま入口だけ TTP に変える</strong>か。
+      どちらが正しいかは、社内標準とマクロ資産の量で決まります。
+    </p>
+
+    <h2>RLogin が向いている人</h2>
+    <ul>
+      <li>複数の接続先をタブで整理し、画面分割で同時に見たい</li>
+      <li>SFTP まで同じウィンドウ内で済ませたい（WinSCP を別に開かない）</li>
+      <li>接続先ごとに背景色を変えるなど、誤操作を視覚的に防ぎたい</li>
+      <li>踏み台経由の接続を、ポートフォワード設定で表現したい</li>
+      <li>ターミナルそのものを乗り換えることに抵抗がない</li>
+    </ul>
+    <p>RLogin は国産のターミナルソフトで、接続先エントリの管理・タブ・画面分割・SFTP が一体化しています。「Tera Term の不便さを解消したい」という目的では、最も総合力の高い選択肢です。</p>
+
+    <h2>Tera Term を使い続ける理由</h2>
+    <ul>
+      <li>社内標準が Tera Term で、手順書やベンダーサポートが Tera Term 前提になっている</li>
+      <li><code>.ttl</code> のマクロ資産が既にある（定型作業の自動化）</li>
+      <li>シリアル接続で機器を触る業務がある</li>
+      <li>端末の管理台帳に「Tera Term」と書かれていて、変更申請が面倒</li>
+    </ul>
+    <p>この場合、ターミナルを替えるとマクロ資産の書き換えと手順書の更新が発生します。TTP は Tera Term をそのまま使うため、この作業が発生しません。</p>
+
+    <h2>機能の比較</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>RLogin と TTP の比較（2026年11月時点）</caption>
+        <thead>
+          <tr>
+            <th scope="col">項目</th>
+            <th scope="col">TTP</th>
+            <th scope="col">RLogin</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">ターミナル本体</th><td>Tera Term（そのまま使う）</td><td>RLogin 本体</td></tr>
+          <tr><th scope="row">接続先の一覧管理</th><td class="mark m-ok">○</td><td class="mark m-ok">○</td></tr>
+          <tr><th scope="row">タブ・画面分割</th><td class="mark m-ng">Tera Term 側の機能</td><td class="mark m-ok">○</td></tr>
+          <tr><th scope="row">SFTP</th><td class="mark m-na">別途（WinSCP など）</td><td class="mark m-ok">○</td></tr>
+          <tr><th scope="row">シリアル接続</th><td class="mark m-ok">Tera Term 側</td><td class="mark m-ok">○</td></tr>
+          <tr><th scope="row">自動化</th><td>Tera Term マクロ</td><td>スクリプト / Chat Script</td></tr>
+          <tr><th scope="row">既存マクロ資産</th><td class="mark m-ok">そのまま使える</td><td class="mark m-half">書き換えが必要</td></tr>
+          <tr><th scope="row">接続ログの自動取得</th><td class="mark m-ok">○（接続のたびに生成）</td><td class="mark m-half">設定で可</td></tr>
+          <tr><th scope="row">AWS SSM / ECS Exec 接続</th><td class="mark m-ok">○</td><td class="mark m-ng">×</td></tr>
+          <tr><th scope="row">移行コスト</th><td class="mark m-ok">小（接続先の登録のみ）</td><td class="mark m-half">大（登録・手順書・マクロ）</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">※ RLogin の機能は公式マニュアルの記載に基づきます。TTP の「タブ・画面分割」欄は、Tera Term 側の機能であり TTP が提供するものではないことを示しています。</p>
+
+    <h2>パスワードの扱いについて</h2>
+    <p>RLogin の公式マニュアル（FAQ）には、パスワードの保存について次のように記載されています。</p>
+    <blockquote>
+      セキュリティーを考えるならPasswordを保存しないでください。保存しない場合は、下記のパスワード/フレーズ入力をチェックして接続時に入力するようにしてください。
+    </blockquote>
+    <p>つまり RLogin は「接続先の管理はできるが、認証情報は預けないでほしい」という設計方針です。TTP は逆に、認証情報を AES-256 で暗号化して預ける設計です。どちらが良いかではなく、<strong>何をツールに預けるか</strong>の違いです。</p>
+    <p>「接続のたびにパスワードを入力したくないが、平文で保存もしたくない」という要求に対して、TTP はマスターパスワードで保護する形で応えます。</p>
+
+    <h2>判断の目安</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">状況</th><th scope="col">向いている選択</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">タブ・画面分割・SFTP が欲しい</th><td>RLogin</td></tr>
+          <tr><th scope="row">マクロ資産を捨てたくない</th><td>TTP</td></tr>
+          <tr><th scope="row">シリアル接続も同じツールで扱いたい</th><td>TTP（Tera Term）</td></tr>
+          <tr><th scope="row">AWS の EC2 / Fargate にも同じ入口で入りたい</th><td>TTP</td></tr>
+          <tr><th scope="row">手順書の更新コストをかけたくない</th><td>TTP</td></tr>
+          <tr><th scope="row">ターミナルごと一新したい</th><td>RLogin</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>併用について</h2>
+    <p>RLogin と TTP は同居できます。ただし接続先を二重に管理することになり、パスワード変更時に両方直す必要が出ます。片方を「日常使い」、もう片方を「AWS や特定業務」と役割で分けるのが現実的です。</p>
+
+    <div class="next-links">
+      <a href="/compare/teraterm-menu/">
+        <span>比較</span>
+        <strong>TeraTerm Menu と TTP の違い</strong>
+      </a>
+      <a href="/guide/no-plaintext/">
+        <span>パスワード</span>
+        <strong>マクロにパスワードを書かない3つの方法</strong>
+      </a>
+    </div>
+
+    <p class="updated">最終更新: 2026年11月14日 / 引用元: RLogin 公式マニュアル（FAQ）</p>
+  </div>
+</article>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="disclaimer">
+      TTP (Tera Term Pilot) は個人が開発した非公式ツールです。TeraTerm Project、寺西高氏、および各社とは関係ありません。
+      「Tera Term」は TeraTerm Project が開発するソフトウェアの名称です。
+    </p>
+    <p class="footer-meta">
+      <a href="https://github.com/okamoto53515606/ttp">GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/okamoto53515606/ttp/releases">リリース</a>
+      <span aria-hidden="true">·</span>
+      <a href="/llms.txt">llms.txt</a>
+      <span aria-hidden="true">·</span>
+      <span>MIT License</span>
+      <span aria-hidden="true">·</span>
+      <span>© 2026 okamo</span>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

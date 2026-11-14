@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TeraTerm Menu と TTP の違い — 接続先ランチャーの比較</title>
+<meta name="description" content="TeraTerm Menu は Tera Term に同梱される接続先ランチャーです。TTP との違いを、設定の保存先・認証情報の扱い・自動ログ・ポータブル性・AWS 接続の観点で比較します。">
+<link rel="canonical" href="https://ttpilot.okamomedia.tokyo/compare/teraterm-menu/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b6b7a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TTP (Tera Term Pilot)">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="TeraTerm Menu と TTP の違い">
+<meta property="og:description" content="同梱の接続先ランチャーと、暗号化・自動ログ・ポータブルに対応する TTP を比較します。">
+<meta property="og:url" content="https://ttpilot.okamomedia.tokyo/compare/teraterm-menu/">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://ttpilot.okamomedia.tokyo/compare/teraterm-menu/#article",
+      "headline": "TeraTerm Menu と TTP の違い",
+      "description": "TeraTerm Menu は Tera Term に同梱される接続先ランチャー。TTP との違いを比較する。",
+      "inLanguage": "ja",
+      "datePublished": "2026-11-14",
+      "dateModified": "2026-11-14",
+      "author": { "@type": "Person", "name": "okamo", "url": "https://www.okamomedia.tokyo/" },
+      "publisher": { "@type": "Organization", "name": "okamomedia" },
+      "mainEntityOfPage": "https://ttpilot.okamomedia.tokyo/compare/teraterm-menu/",
+      "about": { "@id": "https://ttpilot.okamomedia.tokyo/#app" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "TTP", "item": "https://ttpilot.okamomedia.tokyo/" },
+        { "@type": "ListItem", "position": 2, "name": "TeraTerm Menu との違い", "item": "https://ttpilot.okamomedia.tokyo/compare/teraterm-menu/" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へ移動</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/">
+      <img src="/favicon.svg" alt="" width="24" height="24">
+      <span class="brand-text">TTP<small>Tera Term Pilot</small></span>
+    </a>
+    <nav class="nav" aria-label="サイト内メニュー">
+      <a href="/guide/macro/">できること</a>
+      <a href="/guide/no-plaintext/">パスワード</a>
+      <a href="/compare/teraterm-menu/">比較</a>
+      <a href="/aws/ssm/">AWS</a>
+      <a href="/security/">セキュリティ</a>
+      <a class="btn btn-sm" href="https://github.com/okamoto53515606/ttp/releases/latest">ダウンロード</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+  <nav class="crumbs" aria-label="パンくず">
+    <ol>
+      <li><a href="/">TTP</a></li>
+      <li>TeraTerm Menu との違い</li>
+    </ol>
+  </nav>
+</div>
+
+<article class="article">
+  <div class="wrap">
+    <h1>TeraTerm Menu と TTP の違い</h1>
+    <p class="lead">
+      TeraTerm Menu は Tera Term のインストーラに同梱されている、常駐型の接続先ランチャーです。
+      「接続先を一覧から選んでログインする」という目的は TTP と同じですが、
+      <strong>設定と認証情報をどこに置くか</strong>が大きく違います。
+    </p>
+
+    <h2>TeraTerm Menu とは</h2>
+    <ul>
+      <li>Tera Term に同梱される接続先ランチャー。タスクトレイに常駐します</li>
+      <li>登録した接続先を選ぶだけで、Tera Term を起動して自動ログインします</li>
+      <li>Tera Term 5.7.0 では TeraTerm Menu v1.24 が同梱されています（2026年9月）</li>
+      <li>設定は既定でレジストリ（<code>HKEY_CURRENT_USER\Software\ShinpeiTools\TTermMenu</code>）に保存され、ポータブル版では <code>ttpmenu.ini</code> も使えます</li>
+    </ul>
+    <p>Tera Term を既に使っているなら、追加インストールなしで使えるのが利点です。</p>
+
+    <h2>同じところ</h2>
+    <ul>
+      <li>接続先を一覧から選んで接続できる</li>
+      <li>Tera Term 本体を置き換えない（別のターミナルソフトを覚え直さなくてよい）</li>
+      <li>インストール作業がほぼ不要</li>
+    </ul>
+
+    <h2>違うところ</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>TeraTerm Menu と TTP の比較（2026年11月時点）</caption>
+        <thead>
+          <tr>
+            <th scope="col">項目</th>
+            <th scope="col">TeraTerm Menu</th>
+            <th scope="col">TTP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">入手方法</th><td>Tera Term に同梱</td><td>単体配布（zip）</td></tr>
+          <tr><th scope="row">設定の保存先</th><td>レジストリ ／ <code>ttpmenu.ini</code></td><td>アプリのフォルダ内（<code>ttp_data</code>）</td></tr>
+          <tr><th scope="row">認証情報の暗号化</th><td>公式情報に記載なし</td><td class="mark m-ok">AES-256</td></tr>
+          <tr><th scope="row">接続ログの自動取得</th><td class="mark m-ng">×</td><td class="mark m-ok">○（接続のたびに生成）</td></tr>
+          <tr><th scope="row">レジストリ不使用</th><td class="mark m-half">設定次第</td><td class="mark m-ok">○</td></tr>
+          <tr><th scope="row">秘密鍵のアプリ内管理</th><td>外部ファイルを指定</td><td class="mark m-ok">暗号化して保存</td></tr>
+          <tr><th scope="row">踏み台の多段接続</th><td>マクロ側の記述による</td><td class="mark m-ok">設定項目で対応</td></tr>
+          <tr><th scope="row">AWS SSM / ECS Exec 接続</th><td class="mark m-ng">×</td><td class="mark m-ok">○</td></tr>
+          <tr><th scope="row">アンインストール</th><td>レジストリの後始末が必要</td><td>フォルダ削除のみ</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">
+      ※ TeraTerm Menu の仕様は Tera Term の公式マニュアル（インストール／アンインストール手順）の記載に基づきます。
+      暗号化の有無について公式に明記が見当たらないため「記載なし」としています。
+    </p>
+
+    <h2>TeraTerm Menu で足りる人</h2>
+    <ul>
+      <li>接続先が数台で、増える予定もない</li>
+      <li>端末は自分専用で、他の人と設定を共有しない</li>
+      <li>パスワードは保存せず、接続のたびに入力している</li>
+      <li>作業ログは必要になったときだけ手動で取っている</li>
+    </ul>
+    <p>この条件に当てはまるなら、同梱の TeraTerm Menu で十分です。無理に置き換える必要はありません。</p>
+
+    <h2>TTP が要る人</h2>
+    <ul>
+      <li>接続先が増えてきて、どれが現役か分からなくなってきた</li>
+      <li>端末を複数人で使う、または設定を配っている</li>
+      <li>レジストリに接続先や認証情報を置きたくない</li>
+      <li>作業ログを「確実に」残す必要がある</li>
+      <li>AWS の EC2 / Fargate にも同じ入口から入りたい</li>
+    </ul>
+
+    <h2>併用できるか</h2>
+    <p>技術的には併用できます。TTP はレジストリを使わないため、TeraTerm Menu の設定に影響しません。ただし同じ接続先を二重に管理することになるため、移行するなら片方に寄せたほうが運用は楽になります。</p>
+
+    <div class="callout">
+      <p><strong>Tera Term 5 で LogMeTT が使えなくなった場合。</strong> Tera Term 5.0 で LogMeTT と TTLEditor はインストーラから削除されました。詳しくは <a href="/compare/logmett/">LogMeTT からの移行</a>をご覧ください。</p>
+    </div>
+
+    <div class="next-links">
+      <a href="/compare/logmett/">
+        <span>比較</span>
+        <strong>LogMeTT は Tera Term 5.0 で削除されました</strong>
+      </a>
+      <a href="/compare/rlogin/">
+        <span>比較</span>
+        <strong>RLogin と TTP は、競合しません</strong>
+      </a>
+    </div>
+
+    <p class="updated">最終更新: 2026年11月14日</p>
+  </div>
+</article>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="disclaimer">
+      TTP (Tera Term Pilot) は個人が開発した非公式ツールです。TeraTerm Project、寺西高氏、および各社とは関係ありません。
+      「Tera Term」は TeraTerm Project が開発するソフトウェアの名称です。
+    </p>
+    <p class="footer-meta">
+      <a href="https://github.com/okamoto53515606/ttp">GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/okamoto53515606/ttp/releases">リリース</a>
+      <span aria-hidden="true">·</span>
+      <a href="/llms.txt">llms.txt</a>
+      <span aria-hidden="true">·</span>
+      <span>MIT License</span>
+      <span aria-hidden="true">·</span>
+      <span>© 2026 okamo</span>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

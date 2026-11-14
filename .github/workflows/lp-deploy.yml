@@ -1,0 +1,85 @@
+name: Deploy LP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lp/**"
+      - "docs/screenshot/**"
+      - ".github/workflows/lp-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: lp-deploy
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-northeast-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: バージョン表記の整合チェック
+        shell: bash
+        run: |
+          set -euo pipefail
+          V=$(python3 -c "import tomllib,pathlib;print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          echo "pyproject.toml のバージョン: $V"
+          if ! grep -q "\"softwareVersion\": \"$V\"" lp/index.html; then
+            echo "::error::lp/index.html の JSON-LD softwareVersion が pyproject.toml ($V) と一致しません。"
+            exit 1
+          fi
+
+      - name: HTML にインラインスタイルが無いことを確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          # CSP は style-src 'self' のみ。style 属性や <style> 要素があると適用されない。
+          if grep -rn -E 'style="|<style' lp --include="*.html"; then
+            echo "::error::インラインスタイルが見つかりました。CSP により適用されません。"
+            exit 1
+          fi
+
+      - name: スクリーンショットを同梱
+        run: |
+          set -euo pipefail
+          mkdir -p lp/assets/screenshots
+          cp docs/screenshot/*.png lp/assets/screenshots/
+          ls -1 lp/assets/screenshots/
+
+      - name: AWS 認証（OIDC）
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: ttp-lp-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: S3 へ同期（HTML・メタデータ）
+        run: |
+          set -euo pipefail
+          aws s3 sync lp "s3://${{ vars.LP_BUCKET }}" \
+            --delete \
+            --exclude "assets/*" \
+            --cache-control "public, max-age=0, must-revalidate"
+
+      - name: S3 へ同期（静的アセット）
+        run: |
+          set -euo pipefail
+          aws s3 sync lp/assets "s3://${{ vars.LP_BUCKET }}/assets" \
+            --cache-control "public, max-age=31536000, immutable"
+
+      - name: CloudFront のキャッシュを無効化
+        run: |
+          set -euo pipefail
+          ID=$(aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.CF_DISTRIBUTION_ID }}" \
+            --paths "/*" \
+            --query 'Invalidation.Id' --output text)
+          echo "Invalidation: $ID"

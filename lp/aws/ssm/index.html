@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SSM で EC2 に接続する — Session Manager を GUI から使う (TTP)</title>
+<meta name="description" content="Session Manager プラグインだけで、SSM 経由で EC2 に接続します。AWS CLI は不要。接続可能なインスタンスだけを一覧表示し、必要な IAM 権限も最小構成でまとめます。">
+<link rel="canonical" href="https://ttpilot.okamomedia.tokyo/aws/ssm/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b6b7a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TTP (Tera Term Pilot)">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="SSM で EC2 に接続する — Session Manager を GUI から使う">
+<meta property="og:description" content="Session Manager プラグインだけで SSM 接続。AWS CLI は不要です。">
+<meta property="og:url" content="https://ttpilot.okamomedia.tokyo/aws/ssm/">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://ttpilot.okamomedia.tokyo/aws/ssm/#article",
+      "headline": "SSM で EC2 に接続する — Session Manager を GUI から使う",
+      "description": "Session Manager プラグインだけで SSM 経由で EC2 に接続する手順と、必要な IAM 権限をまとめる。",
+      "inLanguage": "ja",
+      "datePublished": "2026-11-14",
+      "dateModified": "2026-11-14",
+      "author": { "@type": "Person", "name": "okamo", "url": "https://www.okamomedia.tokyo/" },
+      "publisher": { "@type": "Organization", "name": "okamomedia" },
+      "mainEntityOfPage": "https://ttpilot.okamomedia.tokyo/aws/ssm/",
+      "about": { "@id": "https://ttpilot.okamomedia.tokyo/#app" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "TTP", "item": "https://ttpilot.okamomedia.tokyo/" },
+        { "@type": "ListItem", "position": 2, "name": "SSM で EC2 に接続する", "item": "https://ttpilot.okamomedia.tokyo/aws/ssm/" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へ移動</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/">
+      <img src="/favicon.svg" alt="" width="24" height="24">
+      <span class="brand-text">TTP<small>Tera Term Pilot</small></span>
+    </a>
+    <nav class="nav" aria-label="サイト内メニュー">
+      <a href="/guide/macro/">できること</a>
+      <a href="/guide/no-plaintext/">パスワード</a>
+      <a href="/compare/teraterm-menu/">比較</a>
+      <a href="/aws/ssm/">AWS</a>
+      <a href="/security/">セキュリティ</a>
+      <a class="btn btn-sm" href="https://github.com/okamoto53515606/ttp/releases/latest">ダウンロード</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+  <nav class="crumbs" aria-label="パンくず">
+    <ol>
+      <li><a href="/">TTP</a></li>
+      <li>SSM で EC2 に接続する</li>
+    </ol>
+  </nav>
+</div>
+
+<article class="article">
+  <div class="wrap">
+    <h1>SSM で EC2 に接続する</h1>
+    <p class="lead">
+      Session Manager を使うと、SSH の鍵もインバウンドポートもなしで EC2 のシェルに入れます。
+      TTP は「いま繋がるインスタンス」だけを一覧に出すので、インスタンス ID を調べる手間がありません。
+      <strong>必要なのは Session Manager プラグインだけ</strong>で、AWS CLI は不要です。
+    </p>
+
+    <div class="callout">
+      <p><strong>Tera Term とは独立した機能です。</strong> SSM 接続は SSH の代わりに Session Manager を使うため、Tera Term も sshd も不要です。使わない場合、追加のインストールも設定も発生しません。</p>
+    </div>
+
+    <h2>必要なもの</h2>
+    <ol class="steps">
+      <li>
+        <h3>Session Manager プラグイン</h3>
+        <p>クライアント側に必要なのはこれだけです。TTP には同梱していません。未導入のまま「AWS から接続」を開くと、インストール案内が表示されます。導入後は PATH を読み直すため、TTP を再起動してください。</p>
+      </li>
+      <li>
+        <h3>EC2 側の SSM Agent とインスタンスプロファイル</h3>
+        <p>SSM Agent が動作し、<code>AmazonSSMManagedInstanceCore</code> 相当の権限を持つインスタンスプロファイルが付いている必要があります。</p>
+      </li>
+      <li>
+        <h3>接続する IAM ユーザーの権限</h3>
+        <p>後述の最小ポリシーを付与します。<code>ssmmessages:*</code> の4つを忘れると、セッションは張れるのにシェルが開かない、という分かりにくい失敗になります。</p>
+      </li>
+    </ol>
+
+    <h2>一覧に出る条件</h2>
+    <p>TTP は <code>ssm:DescribeInstanceInformation</code> の結果から、<strong><code>PingStatus</code> が <code>Online</code> のものだけ</strong>を表示します。SSM Agent が停止している、IAM 権限が足りない、ネットワーク的に到達できないインスタンスは一覧に出ません。「一覧に出ない＝そもそも接続できない」と判断できます。</p>
+
+    <h2>手順</h2>
+    <ol class="steps">
+      <li>
+        <h3>「AWS」→「AWS 設定...」で認証情報を入力</h3>
+        <p>アクセスキー ID、シークレットアクセスキー、リージョンを入力します。保存時にマスターパスワード由来の鍵で暗号化されます。</p>
+      </li>
+      <li>
+        <h3>「接続テスト」で疎通を確認</h3>
+        <p>ここで失敗する場合、IAM 権限かネットワークの問題です。TTP を疑う前に、AWS CLI などで同じ認証情報が使えるか確認してください。</p>
+      </li>
+      <li>
+        <h3>「AWS」→「AWS から接続...」（Ctrl+Shift+A）</h3>
+        <p>接続可能な EC2 インスタンスと ECS タスクの一覧が開きます。</p>
+      </li>
+      <li>
+        <h3>インスタンスを選んでダブルクリック</h3>
+        <p>セッションが開始され、シェルが開きます。</p>
+      </li>
+    </ol>
+
+    <h2>MFA を使っている場合</h2>
+    <p>IAM ユーザーに MFA を必須とするポリシーを敷いている場合だけ、「AWS 設定」で「MFA を使用する」を有効にしてください。接続のたびに6桁コードを入力します。MFA を必須にしていない場合、この設定は不要です。</p>
+
+    <h2>必要な IAM 権限（最小構成）</h2>
+<pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ecs:ListClusters",
+        "ecs:ListTasks",
+        "ecs:DescribeTasks",
+        "ecs:ExecuteCommand",
+        "ssm:DescribeInstanceInformation",
+        "ssm:StartSession"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel"
+      ],
+      "Resource": "*"
+    }
+  ]
+}</code></pre>
+    <p class="table-note">ECS Exec を使わない場合、<code>ecs:*</code> の4つと <code>ecs:ExecuteCommand</code> は不要です。EC2 の SSM 接続だけなら <code>ec2:DescribeInstances</code>、<code>ssm:*</code> の2つ、<code>ssmmessages:*</code> の4つで足ります。</p>
+
+    <h2>うまくいかないとき</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">症状</th><th scope="col">確認すること</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">一覧が空になる</th><td>リージョンが正しいか。SSM Agent が動いているか。インスタンスプロファイルが付いているか。</td></tr>
+          <tr><th scope="row">接続テストで失敗する</th><td>アクセスキーの有効性、<code>ssm:DescribeInstanceInformation</code> の権限、端末から AWS への経路。</td></tr>
+          <tr><th scope="row">セッションは始まるがシェルが開かない</th><td><code>ssmmessages:*</code> の4権限。ここが最も見落とされます。</td></tr>
+          <tr><th scope="row">プラグインが見つからないと言われる</th><td>プラグイン導入後に TTP を再起動したか（PATH の再読み込みが必要）。</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>注意事項</h2>
+    <ul>
+      <li>AWS のアクセスキーは <code>ttp_data/aws.enc</code> に暗号化して保存されます。ログ・例外メッセージ・子プロセスのコマンドラインには出力しません</li>
+      <li>長期アクセスキーの保存を避けたい場合は、IAM 側で権限を絞るか、別の認証方式を併用してください</li>
+      <li>この機能は Tera Term を使いません。TTP の SSH 機能とは別の経路です</li>
+    </ul>
+
+    <div class="next-links">
+      <a href="/aws/ecs-exec/">
+        <span>AWS</span>
+        <strong>ECS Exec で Fargate タスクに入る</strong>
+      </a>
+      <a href="/guide/macro/">
+        <span>運用</span>
+        <strong>Tera Term のマクロを1本にまとめる</strong>
+      </a>
+    </div>
+
+    <p class="updated">最終更新: 2026年11月14日</p>
+  </div>
+</article>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="disclaimer">
+      TTP (Tera Term Pilot) は個人が開発した非公式ツールです。TeraTerm Project、寺西高氏、および各社とは関係ありません。
+      「Tera Term」は TeraTerm Project が開発するソフトウェアの名称です。
+    </p>
+    <p class="footer-meta">
+      <a href="https://github.com/okamoto53515606/ttp">GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/okamoto53515606/ttp/releases">リリース</a>
+      <span aria-hidden="true">·</span>
+      <a href="/llms.txt">llms.txt</a>
+      <span aria-hidden="true">·</span>
+      <span>MIT License</span>
+      <span aria-hidden="true">·</span>
+      <span>© 2026 okamo</span>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

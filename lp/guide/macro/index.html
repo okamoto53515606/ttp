@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tera Term のマクロを1本にまとめる — TTP (Tera Term Pilot)</title>
+<meta name="description" content="接続先ごとに .ttl を作る運用をやめる。TTP は connect.ttl 1本に接続情報を環境変数で渡して起動します。接続先が増えてもマクロは増えず、マクロを書ける人に依存しません。">
+<link rel="canonical" href="https://ttpilot.okamomedia.tokyo/guide/macro/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b6b7a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TTP (Tera Term Pilot)">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="Tera Term のマクロを1本にまとめる">
+<meta property="og:description" content="接続先ごとに .ttl を作らない。connect.ttl 1本に接続情報を環境変数で渡す運用。">
+<meta property="og:url" content="https://ttpilot.okamomedia.tokyo/guide/macro/">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://ttpilot.okamomedia.tokyo/guide/macro/#article",
+      "headline": "Tera Term のマクロを1本にまとめる",
+      "description": "接続先ごとに .ttl を作る運用をやめ、connect.ttl 1本に接続情報を環境変数で渡す方法をまとめる。",
+      "inLanguage": "ja",
+      "datePublished": "2026-11-14",
+      "dateModified": "2026-11-14",
+      "author": { "@type": "Person", "name": "okamo", "url": "https://www.okamomedia.tokyo/" },
+      "publisher": { "@type": "Organization", "name": "okamomedia" },
+      "mainEntityOfPage": "https://ttpilot.okamomedia.tokyo/guide/macro/",
+      "about": { "@id": "https://ttpilot.okamomedia.tokyo/#app" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "TTP", "item": "https://ttpilot.okamomedia.tokyo/" },
+        { "@type": "ListItem", "position": 2, "name": "Tera Term のマクロを1本にまとめる", "item": "https://ttpilot.okamomedia.tokyo/guide/macro/" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へ移動</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/">
+      <img src="/favicon.svg" alt="" width="24" height="24">
+      <span class="brand-text">TTP<small>Tera Term Pilot</small></span>
+    </a>
+    <nav class="nav" aria-label="サイト内メニュー">
+      <a href="/guide/macro/">できること</a>
+      <a href="/guide/no-plaintext/">パスワード</a>
+      <a href="/compare/teraterm-menu/">比較</a>
+      <a href="/aws/ssm/">AWS</a>
+      <a href="/security/">セキュリティ</a>
+      <a class="btn btn-sm" href="https://github.com/okamoto53515606/ttp/releases/latest">ダウンロード</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+  <nav class="crumbs" aria-label="パンくず">
+    <ol>
+      <li><a href="/">TTP</a></li>
+      <li>Tera Term のマクロを1本にまとめる</li>
+    </ol>
+  </nav>
+</div>
+
+<article class="article">
+  <div class="wrap">
+    <h1>Tera Term のマクロを、1本にまとめる</h1>
+    <p class="lead">
+      接続先が増えるたびに <code>.ttl</code> が増えていく運用を、そのままにしていませんか。
+      TTP は接続先ごとにマクロを生成しません。同梱の <code>connect.ttl</code> 1本に接続情報を渡して起動します。
+    </p>
+
+    <h2>接続先ごとの .ttl が抱える問題</h2>
+    <p>Tera Term のマクロ入門記事は、ほぼすべて「接続先ごとに <code>.ttl</code> を1枚作る」形で書かれています。手元で試す分には分かりやすいのですが、運用に乗せると次の4つが順番に現れます。</p>
+    <ul>
+      <li><strong>ファイルが増える</strong> — 接続先が20あれば <code>.ttl</code> が20枚。どれが現役で、どれが古いのか分からなくなります。</li>
+      <li><strong>変更が全ファイルに散る</strong> — 接続方式や待ちプロンプトを変えるたびに、全部を直して回ることになります。</li>
+      <li><strong>書ける人しか触れない</strong> — 新しい接続先を足すのに、マクロを書ける人へ依頼する必要があります。異動や退職で、誰も触れなくなります。</li>
+      <li><strong>秘密がファイルに残る</strong> — パスワードをマクロに直接書く例が大半で、共有フォルダに認証情報が置かれることになります（<a href="/guide/no-plaintext/">別記事</a>で詳しく扱っています）。</li>
+    </ul>
+
+    <h2>TTP の方式 — connect.ttl 1本 ＋ 環境変数</h2>
+    <p>TTP が同梱しているマクロは1本だけです。接続先の情報は、マクロを起動するときに環境変数として渡します。</p>
+
+<pre><code>; connect.ttl （全接続先で共通）
+getenv 'TT_TTL_HOST'   myhost
+getenv 'TT_TTL_PORT'   myport
+getenv 'TT_TTL_AUTH'   myauth
+getenv 'TT_TTL_USER'   myuser
+getenv 'TT_TTL_PASSWD' mypasswd
+getenv 'TT_TTL_LOGPATH' mylogpath
+
+myconnectparam = ''
+strconcat myconnectparam myhost
+strconcat myconnectparam ':'
+strconcat myconnectparam myport
+strconcat myconnectparam ' /ssh /2'
+strconcat myconnectparam ' /auth='
+strconcat myconnectparam myauth
+strconcat myconnectparam ' /user='
+strconcat myconnectparam myuser
+strconcat myconnectparam ' /passwd='
+strconcat myconnectparam mypasswd
+
+connect myconnectparam
+
+strlen mylogpath
+if result &gt; 0 then
+  logopen mylogpath 0 0
+endif</code></pre>
+
+    <p>接続先が何台に増えても、この1本を書き換える必要はありません。接続先の追加・変更は、すべて GUI の一覧側で完結します。</p>
+
+    <h3>渡している環境変数</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">変数</th><th scope="col">内容</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row"><code>TT_TTL_HOST</code></th><td>ホスト名または IP アドレス</td></tr>
+          <tr><th scope="row"><code>TT_TTL_PORT</code></th><td>TCP ポート（既定 22）</td></tr>
+          <tr><th scope="row"><code>TT_TTL_AUTH</code></th><td><code>password</code> または <code>publickey</code></td></tr>
+          <tr><th scope="row"><code>TT_TTL_USER</code></th><td>ログインユーザ名</td></tr>
+          <tr><th scope="row"><code>TT_TTL_PASSWD</code></th><td>パスワード（実行時のみ。ファイルには残りません）</td></tr>
+          <tr><th scope="row"><code>TT_TTL_PRIVATEKEY</code></th><td>鍵認証のときの秘密鍵パス</td></tr>
+          <tr><th scope="row"><code>TT_TTL_LOGPATH</code></th><td>自動生成されたログファイルのフルパス</td></tr>
+          <tr><th scope="row"><code>TT_TTL_PROMPT</code></th><td>ログイン後に待つプロンプト文字列</td></tr>
+          <tr><th scope="row"><code>TT_TTL_SENDLN_PARAM</code></th><td>プロンプト検出後に送るコマンド</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>接続先ごとに変えられるもの</h2>
+    <p>マクロを分けなくても、接続先ごとの差異は設定側で吸収できます。</p>
+
+    <h3>ログイン後の自動操作</h3>
+    <p>「プロンプト」と「送信コマンド」を接続先ごとに設定すると、ログイン後に <code>wait</code> → <code>sendln</code> を1回だけ実行します。プロンプトを空にすれば、ログイン後の自動操作は行いません。</p>
+    <p>たとえばプロンプトに <code>$</code>、送信コマンドに <code>uptime</code> を入れておけば、接続直後に状態を確認した状態で画面が開きます。</p>
+
+    <h3>踏み台を経由する多段接続</h3>
+    <p>「踏み台にログイン → その上で対象ホストへ」という2段の接続も、接続先ごとの設定だけで表現できます。</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">設定</th><th scope="col">役割</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">踏み台ログイン後のプロンプト</th><td>踏み台でこの文字列を待つ</td></tr>
+          <tr><th scope="row">踏み台で実行するコマンド</th><td><code>ssh user@target</code> など</td></tr>
+          <tr><th scope="row">対象のパスワードプロンプト</th><td><code>password:</code> など</td></tr>
+          <tr><th scope="row">対象のパスワード</th><td>暗号化して保存</td></tr>
+          <tr><th scope="row">対象ログイン後のプロンプト</th><td>最終的にこの文字列を待つ</td></tr>
+          <tr><th scope="row">対象で実行するコマンド</th><td>ログイン後に送るコマンド</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>踏み台を使う設定では、接続タイムアウトが自動的に延長されます（通常5秒 → 踏み台時15秒）。</p>
+
+    <h2>マクロを書けない人でも運用できる状態にする</h2>
+    <p>TTP の中心は「接続先一覧」の画面です。接続先の追加・編集・複製・削除・並べ替えはすべて GUI で完結し、マクロ言語に触れる場面がありません。</p>
+    <ul>
+      <li>一覧は名前・ホスト・ポート・認証方式・ユーザで表示され、列クリックで並べ替えできます</li>
+      <li>接続先は選んでダブルクリック（または Enter）で接続します</li>
+      <li>設定と暗号化データは ttp フォルダ内の <code>ttp_data</code> にまとまります</li>
+      <li>ttpmacro.exe は Tera Term 4 / 5 を自動検出します</li>
+    </ul>
+    <p>「マクロを書ける人が1人しかいない」状態を、「一覧に登録できる人なら誰でも接続できる」状態に置き換えるのが、この構成の狙いです。</p>
+
+    <div class="callout">
+      <p><strong>現時点の制限。</strong> TTP は同梱の <code>connect.ttl</code> を起動する方式です。任意の自作 <code>.ttl</code> を指定して実行する機能はありません。ログイン後のコマンドや踏み台の手順で表現できない処理が必要な場合は、その部分だけ別のマクロで実行してください。</p>
+    </div>
+
+    <h2>次に読む</h2>
+    <div class="next-links">
+      <a href="/guide/no-plaintext/">
+        <span>パスワード</span>
+        <strong>Tera Term のマクロにパスワードを書かない3つの方法</strong>
+      </a>
+      <a href="/compare/teraterm-menu/">
+        <span>比較</span>
+        <strong>TeraTerm Menu と TTP の違い</strong>
+      </a>
+    </div>
+
+    <p class="updated">最終更新: 2026年11月14日</p>
+  </div>
+</article>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="disclaimer">
+      TTP (Tera Term Pilot) は個人が開発した非公式ツールです。TeraTerm Project、寺西高氏、および各社とは関係ありません。
+      「Tera Term」は TeraTerm Project が開発するソフトウェアの名称です。
+    </p>
+    <p class="footer-meta">
+      <a href="https://github.com/okamoto53515606/ttp">GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/okamoto53515606/ttp/releases">リリース</a>
+      <span aria-hidden="true">·</span>
+      <a href="/llms.txt">llms.txt</a>
+      <span aria-hidden="true">·</span>
+      <span>MIT License</span>
+      <span aria-hidden="true">·</span>
+      <span>© 2026 okamo</span>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

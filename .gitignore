@@ -31,3 +31,6 @@ docs/articles/
 
 # 監査用の一時ファイル
 requirements-audit.txt
+
+# LP のスクリーンショットは docs/screenshot から複製する（デプロイ時に workflow が生成）
+lp/assets/screenshots/
