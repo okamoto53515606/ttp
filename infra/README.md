@@ -44,13 +44,18 @@ aws cloudformation deploy \
   --parameter-overrides \
       DomainName=ttpilot.okamomedia.tokyo \
       AcmCertificateArn=<証明書ARN> \
-      HostedZoneId=<okamomedia.tokyo のホストゾーンID> \
-      CreateDnsRecord=true \
+      EnableCustomDomain=true \
+      CreateDnsRecord=false \
+      HostedZoneId= \
   --capabilities CAPABILITY_IAM
 ```
 
-DNS を自分で設定する場合は `CreateDnsRecord=false` にして、
-出力の `DistributionDomainName` に対して CNAME を張る。
+> **証明書が ISSUED になる前に作りたい場合**
+> `EnableCustomDomain=false` で先に作成し、発行後に
+> `EnableCustomDomain=true` と `AcmCertificateArn` を指定して更新する。
+> この場合、S3 と CloudFront を先に用意して動作確認を進められる。
+> なお、CloudFront は **ISSUED でない証明書を受け付けない**ため、
+> 最初から `true` で作るなら検証完了を待つ必要がある。
 
 ## 3. 出力の確認
 
@@ -72,6 +77,11 @@ aws cloudformation describe-stacks \
 ## 3.5. DNS の設定
 
 レコードの追加は手元で行う前提。次のどれかひとつ。
+
+> **このプロジェクトの DNS は Route53 ではない。**
+> `okamomedia.tokyo` のホストゾーンはこのアカウントに存在しないため、
+> 実際に使うのは C の方法（外部 DNS に CNAME を追加）になる。
+> A / B は Route53 に移行した場合の選択肢として残している。
 
 ### A. スタックに作らせる（Route53 が同じアカウントにある場合）
 
