@@ -558,7 +558,7 @@ figcaption {
 
 /* 1枚だけ見せたい図版（署名警告など） */
 .figure-single {
-  max-width: 560px;
+  max-width: 520px;
   margin: 0 auto 24px;
 }
 

@@ -14,7 +14,7 @@
 <meta property="og:title" content="Tera Term で踏み台経由の自動ログイン">
 <meta property="og:description" content="踏み台 → 対象ホストの2段接続を、マクロを書かずに設定する。">
 <meta property="og:url" content="https://ttpilot.okamomedia.tokyo/guide/bastion/">
-<meta property="og:image" content="https://ttpilot.okamomedia.tokyo/assets/screenshots/TTPConnectionSettingHop.png">
+<meta property="og:image" content="https://ttpilot.okamomedia.tokyo/assets/screenshots/TTPConnectionSettingHop.png?v=1.3.0">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/assets/style.css">
 <script type="application/ld+json">
@@ -116,7 +116,7 @@ wait '$'</code></pre>
 
     <div class="figure-single">
       <figure>
-        <img src="/assets/screenshots/TTPConnectionSettingHop.png" alt="接続先の詳細設定画面。「踏み台経由で接続する」にチェックが入り、プロンプト1、コマンド1、プロンプト2（PW要求）、ターゲットPW、プロンプト3、コマンド3 の入力欄が並んでいる。" width="396" height="380">
+        <img src="/assets/screenshots/TTPConnectionSettingHop.png?v=1.3.0" alt="接続先の詳細設定画面。「踏み台経由で接続する」にチェックが入り、プロンプト1、コマンド1、「ターゲットは鍵認証（パスワード入力なし）」のチェック、プロンプト2（PW要求）、ターゲットPW、プロンプト3、コマンド3 の入力欄が並んでいる。" width="492" height="366">
         <figcaption>詳細設定（任意）を開くと、踏み台の項目が表示されます。</figcaption>
       </figure>
     </div>
@@ -130,6 +130,7 @@ wait '$'</code></pre>
         <tbody>
           <tr><th scope="row">プロンプト1</th><td><code>$</code></td><td>踏み台のログイン完了を待つ文字列</td></tr>
           <tr><th scope="row">コマンド1</th><td><code>ssh -p 22 okamo@ssh-okamo.xxx</code></td><td>踏み台で実行する、対象ホストへの接続コマンド</td></tr>
+          <tr><th scope="row">ターゲットは鍵認証</th><td>（チェック）</td><td>チェックすると、プロンプト2とターゲットPW が無効になり、パスワード送信を行いません</td></tr>
           <tr><th scope="row">プロンプト2（PW要求）</th><td><code>password:</code></td><td>対象ホストのパスワード入力を待つ文字列</td></tr>
           <tr><th scope="row">ターゲットPW</th><td>（暗号化して保存）</td><td>プロンプト2のあとに送るパスワード</td></tr>
           <tr><th scope="row">プロンプト3</th><td><code>$</code></td><td>対象ホストのログイン完了を待つ文字列</td></tr>
@@ -154,7 +155,7 @@ wait '$'</code></pre>
       </li>
       <li>
         <h3>プロンプト2 を待って、ターゲットPW を送信</h3>
-        <p>パスワードは暗号化ストアから取り出され、マクロに渡されます。</p>
+        <p>パスワードは暗号化ストアから取り出され、マクロに渡されます。「ターゲットは鍵認証」にチェックしている場合は、この手順を飛ばして次へ進みます。</p>
       </li>
       <li>
         <h3>プロンプト3 を待って、コマンド3 を送信</h3>
@@ -172,6 +173,14 @@ wait '$'</code></pre>
 
     <h2>対象ホストが鍵認証の場合</h2>
     <p>踏み台側に鍵が用意されている構成なら、<code>ssh ホスト名</code> だけで対象ホストに入れます。TTP 側では「ターゲットは鍵認証（パスワード入力なし）」（v1.3.0 で追加）にチェックしてください。プロンプト2 と ターゲットPW は入力できなくなり、空で保存されます。</p>
+
+    <div class="figure-single">
+      <figure>
+        <img src="/assets/screenshots/TTPConnectionSettingHopKey.png" alt="「ターゲットは鍵認証（パスワード入力なし）」にチェックが入った状態。プロンプト2（PW要求）とターゲットPW の入力欄、および「表示」チェックがグレーアウトしている。" width="492" height="366">
+        <figcaption>チェックすると、プロンプト2とターゲットPW は入力できなくなります。</figcaption>
+      </figure>
+    </div>
+
     <ul>
       <li>「コマンド1」に <code>ssh -i ~/.ssh/id_rsa ホスト名</code> のように鍵を指定する（<code>~/.ssh/config</code> で鍵を設定済みなら <code>ssh ホスト名</code> でも可）</li>
       <li>「ターゲットは鍵認証」にチェックを入れる（プロンプト2・ターゲットPW が無効化されます）</li>
@@ -184,6 +193,7 @@ wait '$'</code></pre>
       <li>ssh-agent を転送する（<code>ForwardAgent yes</code>）</li>
     </ul>
     <p>初回だけホスト鍵の確認（<code>Are you sure you want to continue connecting?</code>）が挟まることがあります。事前に手動で一度ログインしておくか、踏み台側の <code>known_hosts</code> に登録しておくと、自動化が途中で止まりません。</p>
+    <p><strong>鍵にパスフレーズがある場合</strong>は、このチェックを外してください。「プロンプト2」に <code>Enter passphrase</code>、「ターゲットPW」にパスフレーズを入れると、パスフレーズの入力も自動化できます。</p>
 
     <h2>現在の制限</h2>
     <p>できることだけを書くと誤解を生むので、範囲外も明記します。</p>
