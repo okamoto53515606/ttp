@@ -170,13 +170,27 @@ wait '$'</code></pre>
       <li>踏み台を使う設定では、<strong>接続タイムアウトが自動で延長</strong>されます（通常5秒 → 踏み台時15秒）</li>
     </ul>
 
+    <h2>対象ホストが鍵認証の場合</h2>
+    <p>踏み台側に鍵が用意されている構成なら、<code>ssh ホスト名</code> だけで対象ホストに入れます。この場合、TTP 側の設定は2つだけです。</p>
+    <ul>
+      <li>「プロンプト2（PW要求）」と「ターゲットPW」を<strong>空</strong>にする（パスワード送信が省略されます）</li>
+      <li>「プロンプト3」に対象ホストのプロンプト（<code>$</code> など）を入れる</li>
+    </ul>
+    <p>踏み台側の準備は、次のいずれかになります。</p>
+    <ul>
+      <li>踏み台の <code>~/.ssh/</code> に対象ホスト用の鍵を置き、対象ホストの <code>authorized_keys</code> に登録しておく</li>
+      <li><code>~/.ssh/config</code> に <code>Host</code> を定義し、<code>ssh ホスト名</code> で入れるようにしておく</li>
+      <li>ssh-agent を転送する（<code>ForwardAgent yes</code>）</li>
+    </ul>
+    <p>初回だけホスト鍵の確認（<code>Are you sure you want to continue connecting?</code>）が挟まることがあります。事前に手動で一度ログインしておくか、踏み台側の <code>known_hosts</code> に登録しておくと、自動化が途中で止まりません。</p>
+
     <h2>現在の制限</h2>
     <p>できることだけを書くと誤解を生むので、範囲外も明記します。</p>
     <ul>
-      <li><strong>対象ホスト側の認証はパスワードのみ</strong>です。踏み台の先で鍵認証を使う構成には対応していません</li>
       <li>待ち合わせと送信は<strong>3回まで</strong>です。4段以上の多段接続は表現できません</li>
       <li><code>ProxyCommand</code> やポートフォワードによる多段接続ではなく、「画面の文字列を待って送る」方式です</li>
       <li>対話的な入力が2回以上挟まる構成（MFA など）は、1回分しか送れません</li>
+      <li>初回のホスト鍵確認が残っていると、そこで止まります</li>
     </ul>
 
     <h2>TeraTerm Menu との違い</h2>
