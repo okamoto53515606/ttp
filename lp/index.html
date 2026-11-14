@@ -304,7 +304,7 @@ connect myconnectparam</code></pre>
       </div>
     </div>
     <p class="table-note">
-      このほか、踏み台を経由する多段接続、鍵ファイルの暗号化保存、ttpmacro.exe の自動検出（Tera Term 4 / 5）に対応しています。
+      このほか、鍵ファイルの暗号化保存、ttpmacro.exe の自動検出（Tera Term 4 / 5）に対応しています。
     </p>
   </div>
 </section>
@@ -326,6 +326,35 @@ connect myconnectparam</code></pre>
 </section>
 
 <section>
+  <div class="wrap">
+    <h2>踏み台の向こう側へ、そのままログイン</h2>
+    <p class="lead">
+      踏み台にログインして、そこから目的のホストへ。
+      Tera Term ではマクロを書く必要があったこの2段接続を、TTP は接続先ごとの設定項目で表現します。
+      踏み台のパスワードも対象ホストのパスワードも暗号化して保存され、マクロファイルには残りません。
+    </p>
+
+    <div class="figures">
+      <figure>
+        <img src="/assets/screenshots/TTPConnectionSettingHop.png" alt="接続先の詳細設定画面。「踏み台経由で接続する」にチェックが入り、プロンプト1、コマンド1、プロンプト2（PW要求）、ターゲットPW、プロンプト3、コマンド3 の入力欄が並んでいる。" loading="lazy" width="396" height="380">
+        <figcaption>「踏み台経由で接続する」を有効にすると、待ち合わせと送信の項目が使えます。</figcaption>
+      </figure>
+      <div class="card">
+        <h3>設定するのは6項目だけ</h3>
+        <p>6項目を埋めると、次の流れを自動で実行します。</p>
+        <ol>
+          <li>踏み台のログイン完了を待つ</li>
+          <li><code>ssh</code> で対象ホストへ接続</li>
+          <li>パスワード要求を待って、暗号化ストアから送信</li>
+          <li>ログイン後に確認コマンドを1回実行</li>
+        </ol>
+        <p><a href="/guide/bastion/">踏み台経由の自動ログイン</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-soft">
   <div class="wrap">
     <h2>ほかのツールとの違い</h2>
     <div class="table-wrap">
@@ -407,7 +436,7 @@ connect myconnectparam</code></pre>
   </div>
 </section>
 
-<section class="section-soft">
+<section>
   <div class="wrap">
     <h2>AWS から接続する（任意）</h2>
     <p class="lead">

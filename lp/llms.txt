@@ -47,6 +47,7 @@
 
 - [TTP (Tera Term Pilot)](https://ttpilot.okamomedia.tokyo/): 製品概要、比較、FAQ、ダウンロード
 - [Tera Term のマクロを1本にまとめる](https://ttpilot.okamomedia.tokyo/guide/macro/): 接続先ごとに .ttl を作らない運用と、渡している環境変数の一覧
+- [踏み台経由の自動ログイン](https://ttpilot.okamomedia.tokyo/guide/bastion/): 踏み台 → 対象ホストの2段接続を設定項目で表現する方法と制限
 - [マクロにパスワードを書かない3つの方法](https://ttpilot.okamomedia.tokyo/guide/no-plaintext/): 平文・getpassword・TTP の比較。TTP が守れる範囲と守れない範囲
 - [TeraTerm Menu と TTP の違い](https://ttpilot.okamomedia.tokyo/compare/teraterm-menu/): 同梱ランチャーとの比較
 - [LogMeTT は Tera Term 5.0 で削除されました](https://ttpilot.okamomedia.tokyo/compare/logmett/): 削除の経緯と移行手順

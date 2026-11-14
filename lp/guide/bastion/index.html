@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tera Term で踏み台経由の自動ログイン — マクロを書かずに2段接続 (TTP)</title>
+<meta name="description" content="踏み台にログインして目的のホストへ。Tera Term ではマクロが必要だった2段接続を、TTP は設定項目で表現します。踏み台と対象ホストのパスワードは暗号化して保存され、マクロファイルには残りません。">
+<link rel="canonical" href="https://ttpilot.okamomedia.tokyo/guide/bastion/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b6b7a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TTP (Tera Term Pilot)">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="Tera Term で踏み台経由の自動ログイン">
+<meta property="og:description" content="踏み台 → 対象ホストの2段接続を、マクロを書かずに設定する。">
+<meta property="og:url" content="https://ttpilot.okamomedia.tokyo/guide/bastion/">
+<meta property="og:image" content="https://ttpilot.okamomedia.tokyo/assets/screenshots/TTPConnectionSettingHop.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://ttpilot.okamomedia.tokyo/guide/bastion/#article",
+      "headline": "Tera Term で踏み台経由の自動ログイン",
+      "description": "踏み台を経由する2段接続を、マクロではなく設定項目で表現する方法と、その制限をまとめる。",
+      "inLanguage": "ja",
+      "datePublished": "2026-11-14",
+      "dateModified": "2026-11-14",
+      "author": { "@type": "Person", "name": "okamo", "url": "https://www.okamomedia.tokyo/" },
+      "publisher": { "@type": "Organization", "name": "okamomedia" },
+      "mainEntityOfPage": "https://ttpilot.okamomedia.tokyo/guide/bastion/",
+      "about": { "@id": "https://ttpilot.okamomedia.tokyo/#app" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "TTP", "item": "https://ttpilot.okamomedia.tokyo/" },
+        { "@type": "ListItem", "position": 2, "name": "踏み台経由の自動ログイン", "item": "https://ttpilot.okamomedia.tokyo/guide/bastion/" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へ移動</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/">
+      <img src="/favicon.svg" alt="" width="24" height="24">
+      <span class="brand-text">TTP<small>Tera Term Pilot</small></span>
+    </a>
+    <nav class="nav" aria-label="サイト内メニュー">
+      <a href="/guide/macro/">できること</a>
+      <a href="/guide/no-plaintext/">パスワード</a>
+      <a href="/compare/teraterm-menu/">比較</a>
+      <a href="/aws/ssm/">AWS</a>
+      <a href="/security/">セキュリティ</a>
+      <a class="btn btn-sm" href="https://github.com/okamoto53515606/ttp/releases/latest">ダウンロード</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+  <nav class="crumbs" aria-label="パンくず">
+    <ol>
+      <li><a href="/">TTP</a></li>
+      <li>踏み台経由の自動ログイン</li>
+    </ol>
+  </nav>
+</div>
+
+<article class="article">
+  <div class="wrap">
+    <h1>Tera Term で踏み台経由の自動ログイン</h1>
+    <p class="lead">
+      踏み台にログインして、そこから目的のホストへ。
+      Tera Term ではマクロを書く必要があったこの流れを、TTP は<strong>接続先ごとの設定項目</strong>で表現します。
+      踏み台のパスワードも対象ホストのパスワードも暗号化して保存され、マクロファイルには残りません。
+    </p>
+
+    <h2>よくある構成</h2>
+<pre><code>手元の PC ── SSH ──▶ 踏み台（踏み台サーバ） ── SSH ──▶ 対象ホスト</code></pre>
+    <p>この2段接続は、ファイアウォールの内側にある機器を触るときの標準的な形です。TTP は「手元 → 踏み台」を通常の接続設定で、「踏み台 → 対象」を詳細設定で扱います。</p>
+
+    <h2>マクロで書くと、パスワードが2つ並ぶ</h2>
+    <p>既存の解説記事で紹介されている多段接続マクロは、おおむね次の形です。</p>
+<pre><code>HOSTADDR = '10.0.0.10'      ; 踏み台
+USERNAME = 'okamo'
+PASSWORD = 'P@ssw0rd'       ; 踏み台のパスワード（平文）
+
+TARGET_USER = 'okamo'
+TARGET_PASS = 'P@ssw0rd2'   ; 対象ホストのパスワード（平文）
+
+COMMAND = HOSTADDR
+strconcat COMMAND ':22 /ssh /2 /auth=password /user='
+strconcat COMMAND USERNAME
+strconcat COMMAND ' /passwd='
+strconcat COMMAND PASSWORD
+connect COMMAND
+
+wait '$'
+sendln 'ssh okamo@10.0.1.20'
+wait 'password:'
+sendln TARGET_PASS
+wait '$'</code></pre>
+    <p>1つのファイルに<strong>パスワードが2つ</strong>書かれます。これが共有フォルダに置かれると、踏み台だけでなく内側のホストの認証情報まで配られることになります。詳細は<a href="/guide/no-plaintext/">マクロにパスワードを書かない3つの方法</a>で扱っています。</p>
+
+    <h2>TTP の設定項目</h2>
+    <p>「踏み台経由で接続する」を有効にすると、次の6項目が使えます。</p>
+
+    <div class="figure-single">
+      <figure>
+        <img src="/assets/screenshots/TTPConnectionSettingHop.png" alt="接続先の詳細設定画面。「踏み台経由で接続する」にチェックが入り、プロンプト1、コマンド1、プロンプト2（PW要求）、ターゲットPW、プロンプト3、コマンド3 の入力欄が並んでいる。" width="396" height="380">
+        <figcaption>詳細設定（任意）を開くと、踏み台の項目が表示されます。</figcaption>
+      </figure>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <caption>踏み台の設定項目と役割</caption>
+        <thead>
+          <tr><th scope="col">項目</th><th scope="col">例</th><th scope="col">役割</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">プロンプト1</th><td><code>$</code></td><td>踏み台のログイン完了を待つ文字列</td></tr>
+          <tr><th scope="row">コマンド1</th><td><code>ssh -p 22 okamo@ssh-okamo.xxx</code></td><td>踏み台で実行する、対象ホストへの接続コマンド</td></tr>
+          <tr><th scope="row">プロンプト2（PW要求）</th><td><code>password:</code></td><td>対象ホストのパスワード入力を待つ文字列</td></tr>
+          <tr><th scope="row">ターゲットPW</th><td>（暗号化して保存）</td><td>プロンプト2のあとに送るパスワード</td></tr>
+          <tr><th scope="row">プロンプト3</th><td><code>$</code></td><td>対象ホストのログイン完了を待つ文字列</td></tr>
+          <tr><th scope="row">コマンド3</th><td><code>ls -l</code></td><td>対象ホストで実行するコマンド</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>動作の順序</h2>
+    <ol class="steps">
+      <li>
+        <h3>踏み台に接続</h3>
+        <p>通常の接続情報（パスワードまたは鍵）で踏み台にログインします。</p>
+      </li>
+      <li>
+        <h3>必要なら踏み台側で初期操作</h3>
+        <p>詳細設定の「プロンプト」「ログイン後CMD」を埋めておくと、踏み台のログイン直後に1回だけコマンドを送れます。</p>
+      </li>
+      <li>
+        <h3>プロンプト1 を待って、コマンド1 を送信</h3>
+        <p>対象ホストへの <code>ssh</code> を実行します。</p>
+      </li>
+      <li>
+        <h3>プロンプト2 を待って、ターゲットPW を送信</h3>
+        <p>パスワードは暗号化ストアから取り出され、マクロに渡されます。</p>
+      </li>
+      <li>
+        <h3>プロンプト3 を待って、コマンド3 を送信</h3>
+        <p>ログイン後の確認コマンドなどを1回だけ実行できます。</p>
+      </li>
+    </ol>
+
+    <h2>設定のコツ</h2>
+    <ul>
+      <li><strong>プロンプトは画面に出る文字列をそのまま書く</strong>。正規表現ではありません</li>
+      <li>プロンプトに色や装飾が付いている場合、見た目どおりには一致しないことがあります。色を外すか、色を含まない部分（<code>$</code> や <code>#</code> など）を指定してください</li>
+      <li>踏み台のシェルが <code>$</code> でない場合は、その環境のプロンプトに合わせます（<code>#</code>、<code>&gt;</code> など）</li>
+      <li>踏み台を使う設定では、<strong>接続タイムアウトが自動で延長</strong>されます（通常5秒 → 踏み台時15秒）</li>
+    </ul>
+
+    <h2>現在の制限</h2>
+    <p>できることだけを書くと誤解を生むので、範囲外も明記します。</p>
+    <ul>
+      <li><strong>対象ホスト側の認証はパスワードのみ</strong>です。踏み台の先で鍵認証を使う構成には対応していません</li>
+      <li>待ち合わせと送信は<strong>3回まで</strong>です。4段以上の多段接続は表現できません</li>
+      <li><code>ProxyCommand</code> やポートフォワードによる多段接続ではなく、「画面の文字列を待って送る」方式です</li>
+      <li>対話的な入力が2回以上挟まる構成（MFA など）は、1回分しか送れません</li>
+    </ul>
+
+    <h2>TeraTerm Menu との違い</h2>
+    <p>TeraTerm Menu でも踏み台経由の接続はできますが、踏み台の先の操作はマクロ側の記述になります。TTP は接続先ごとの設定項目なので、<strong>マクロを書かない人でも踏み台経由の接続先を追加できます</strong>。</p>
+    <p>詳しくは<a href="/compare/teraterm-menu/">TeraTerm Menu と TTP の違い</a>をご覧ください。</p>
+
+    <div class="next-links">
+      <a href="/guide/macro/">
+        <span>運用</span>
+        <strong>Tera Term のマクロを1本にまとめる</strong>
+      </a>
+      <a href="/guide/no-plaintext/">
+        <span>パスワード</span>
+        <strong>マクロにパスワードを書かない3つの方法</strong>
+      </a>
+    </div>
+
+    <p class="updated">最終更新: 2026年11月14日</p>
+  </div>
+</article>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="disclaimer">
+      TTP (Tera Term Pilot) は個人が開発した非公式ツールです。TeraTerm Project、寺西高氏、および各社とは関係ありません。
+      「Tera Term」は TeraTerm Project が開発するソフトウェアの名称です。
+    </p>
+    <p class="footer-meta">
+      <a href="https://github.com/okamoto53515606/ttp">GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/okamoto53515606/ttp/releases">リリース</a>
+      <span aria-hidden="true">·</span>
+      <a href="/llms.txt">llms.txt</a>
+      <span aria-hidden="true">·</span>
+      <span>MIT License</span>
+      <span aria-hidden="true">·</span>
+      <span>© 2026 okamo</span>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>
