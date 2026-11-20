@@ -186,7 +186,7 @@
       </li>
       <li>
         <strong>AES-256 で暗号化</strong>
-        <span>パスワード・鍵・AWS キーは、マスターパスワード由来の鍵で保護。</span>
+        <span>パスワードと AWS キーは、マスターパスワード由来の鍵で保護。</span>
       </li>
       <li>
         <strong>ログは自動</strong>
@@ -293,7 +293,7 @@ connect myconnectparam</code></pre>
       <div class="card">
         <span class="num">03</span>
         <h3>認証情報は暗号化して保持</h3>
-        <p>AES-256 (Fernet) で暗号化。鍵導出は PBKDF2 の 480,000 回反復。マスターパスワード自体は保存しません。</p>
+        <p>AES-256 (Fernet) で暗号化。鍵導出は PBKDF2 の 480,000 回反復。マスターパスワード自体は保存しません。パスワードと AWS のアクセスキーが対象です。秘密鍵はファイル自体を暗号化せず、パスのみを暗号化ストアに記録します。</p>
       </div>
       <div class="card">
         <span class="num">04</span>
@@ -312,7 +312,7 @@ connect myconnectparam</code></pre>
       </div>
     </div>
     <p class="table-note">
-      このほか、鍵ファイルの暗号化保存、ttpmacro.exe の自動検出（Tera Term 4 / 5）に対応しています。
+      このほか、秘密鍵のパス管理、ttpmacro.exe の自動検出（Tera Term 4 / 5）に対応しています。
     </p>
   </div>
 </section>
