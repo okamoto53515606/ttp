@@ -74,6 +74,15 @@ jobs:
           aws s3 sync lp/assets "s3://${{ vars.LP_BUCKET }}/assets" \
             --cache-control "public, max-age=31536000, immutable"
 
+      - name: テキストの MIME タイプを補正
+        run: |
+          set -euo pipefail
+          # aws s3 sync は charset を付けないため、日本語を含む llms.txt は
+          # Content-Type を明示して上書きする（付けないと取得側で文字化けする）。
+          aws s3 cp lp/llms.txt "s3://${{ vars.LP_BUCKET }}/llms.txt" \
+            --content-type "text/plain; charset=utf-8" \
+            --cache-control "public, max-age=0, must-revalidate"
+
       - name: CloudFront のキャッシュを無効化
         run: |
           set -euo pipefail
